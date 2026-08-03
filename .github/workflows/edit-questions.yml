@@ -1,0 +1,35 @@
+name: Edit question bank
+
+on:
+  workflow_dispatch:
+    inputs:
+      diff:
+        description: 'JSON-массив операций add/edit/delete над банком вопросов'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  apply-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply diff to question bank
+        env:
+          DIFF_JSON: ${{ github.event.inputs.diff }}
+        run: python3 scripts/apply_question_diff.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/questions.jsonl
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Update question bank via editor"
+          git push

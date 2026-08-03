@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Редактор вопросов — Автоскан</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&display=swap');
+:root { --blue: #1a56a0; --border: #d0dcea; --muted: #6b7f9a; --text: #1a2a4a; --green: #1e9e52; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: stretch; color: var(--text); }
+.site-header { display: flex; justify-content: flex-start; }
+.site-header img { width: 1024px; max-width: 100%; display: block; }
+.site-footer { display: flex; justify-content: flex-end; }
+.site-footer img { width: 1024px; max-width: 100%; display: block; }
+.main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px 24px 48px; gap: 20px; }
+
+.panel-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 16px; }
+.field-label { font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+.field-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 15px; color: var(--text); outline: none; transition: border-color .18s, box-shadow .18s; background: #fafcff; margin-bottom: 16px; }
+.field-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,160,.10); background: #fff; }
+.field-input::placeholder { color: #b0bfcc; }
+
+.btn { padding: 11px 20px; border: none; border-radius: 9px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: .4px; transition: background .18s, transform .1s; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.btn-blue { background: var(--blue); color: #fff; box-shadow: 0 4px 16px rgba(26,86,160,.20); }
+.btn-blue:hover:not(:disabled) { background: #154988; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover:not(:disabled) { background: #187e42; }
+.btn-ghost { background: #f4f7fb; color: var(--text); border: 1.5px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { background: #eef3fa; }
+
+.card { width: 100%; max-width: 420px; background: #f4f7fb; border: 1.5px solid var(--border); border-radius: 10px; padding: 24px; }
+.status-msg { font-size: 12px; min-height: 16px; text-align: center; margin-top: 10px; }
+.status-msg.error { color: #e74c3c; }
+.status-msg.ok { color: var(--green); }
+
+.toolbar { width: 100%; max-width: 1200px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar .spacer { flex: 1; }
+.toolbar .status-msg { margin: 0; text-align: left; }
+
+.table-wrap { width: 100%; max-width: 1200px; overflow-x: auto; border: 1.5px solid var(--border); border-radius: 10px; }
+.qtable { display: grid; grid-template-columns: 110px 140px 150px 110px minmax(180px,1.4fr) minmax(180px,1.4fr) 90px 70px 90px; min-width: 1150px; }
+.qtable .h { background: #f4f7fb; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; padding: 10px 8px; border-bottom: 1.5px solid var(--border); position: sticky; top: 0; }
+.qtable .c { padding: 8px; border-bottom: 1px solid var(--border); background: #fff; font-size: 13px; }
+.qtable .row-new .c { background: #f2fbf5; }
+.qtable .row-deleted .c { background: #fdf2f2; opacity: .6; }
+.qtable textarea, .qtable input[type=text], .qtable input[type=number], .qtable select {
+  width: 100%; padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 12.5px; color: var(--text); background: #fafcff; resize: vertical;
+}
+.qtable textarea { min-height: 44px; }
+.qtable .id-cell { font-size: 11px; color: var(--muted); word-break: break-all; }
+.qtable .tags { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; }
+.qtable .tags label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.qtable .err { color: #e74c3c; font-size: 10.5px; margin-top: 4px; }
+.qtable .row-actions { display: flex; flex-direction: column; gap: 6px; }
+.qtable .row-actions button { font-size: 11.5px; padding: 5px 8px; border-radius: 6px; border: 1.5px solid var(--border); background: #fff; cursor: pointer; }
+.qtable .row-actions button:hover { background: #f4f7fb; }
+
+.hint { font-size: 12px; color: var(--muted); max-width: 1200px; }
+</style>
+</head>
+<body>
+
+<div class="site-header"><img src="header.jpg" alt="АвтоСкан"></div>
+
+<div class="main">
+
+  <div id="lockScreen" class="card">
+    <div class="panel-title">Доступ к редактору вопросов</div>
+    <div class="field-label">Пароль</div>
+    <input class="field-input" id="passInput" type="password" placeholder="Введите пароль" autocomplete="off">
+    <button class="btn btn-blue" style="width:100%" onclick="tryUnlock()">Войти</button>
+    <div class="status-msg error" id="lockStatus"></div>
+  </div>
+
+  <div id="tokenScreen" class="card" style="display:none">
+    <div class="panel-title">GitHub-токен</div>
+    <div class="field-label">Fine-grained PAT (Actions: Read and write)</div>
+    <input class="field-input" id="tokenInput" type="password" placeholder="github_pat_..." autocomplete="off">
+    <button class="btn btn-blue" style="width:100%" onclick="saveToken()">Сохранить и продолжить</button>
+    <div class="status-msg error" id="tokenStatus"></div>
+    <div class="hint" style="margin-top:8px;max-width:none;">Токен хранится только в этом браузере (localStorage), в код страницы и в репозиторий не попадает.</div>
+  </div>
+
+  <div id="editorScreen" style="display:none; width:100%; flex-direction:column; align-items:center; gap:20px;">
+    <div class="toolbar">
+      <button class="btn btn-blue" onclick="addQuestion()">+ Добавить вопрос</button>
+      <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>Опубликовать изменения</button>
+      <button class="btn btn-ghost" onclick="loadBank()">Обновить банк</button>
+      <button class="btn btn-ghost" onclick="forgetToken()">Сменить токен</button>
+      <div class="spacer"></div>
+      <div class="status-msg" id="mainStatus"></div>
+    </div>
+    <div class="hint">Правки копятся локально в браузере. Ничего не уходит на GitHub, пока не нажата «Опубликовать изменения» — это один запуск workflow на всю сессию редактирования.</div>
+    <div class="table-wrap">
+      <div class="qtable" id="qtable"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="site-footer"><img src="footer.jpg" alt="АвтоСкан"></div>
+
+<datalist id="sectionList"></datalist>
+
+<script>
+const OWNER = 'KeeGooRoomiE';
+const REPO = 'avtoscan-refactored-octo-spork';
+const BRANCH = 'main';
+const WORKFLOW_FILE = 'edit-questions.yml';
+const PASSWORD_HASH_HEX = 'f956298be4244f631c2b9e4125a6c0447b85898319626d6d2000c900fabab27e';
+const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
+
+const POSITIONS = [
+  { value: 'mop', label: 'МОП' },
+  { value: 'tp', label: 'ТП' },
+  { value: 'service', label: 'Сервис' },
+];
+const TYPES = [
+  { value: 'single', label: 'Один ответ' },
+  { value: 'multiple', label: 'Несколько ответов' },
+  { value: 'free', label: 'Свободный ответ' },
+];
+
+let originalById = new Map();  // id -> plain question snapshot (as loaded from repo)
+let working = [];              // array of question objects with _isNew / _deleted
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function tryUnlock() {
+  const statusEl = document.getElementById('lockStatus');
+  statusEl.textContent = '';
+  const pass = document.getElementById('passInput').value;
+  if (!pass) return;
+  if (!window.crypto || !window.crypto.subtle) {
+    statusEl.textContent = 'crypto.subtle недоступен (нужен https или localhost)';
+    return;
+  }
+  const hex = await sha256Hex(pass);
+  if (hex !== PASSWORD_HASH_HEX) {
+    statusEl.textContent = 'Неверный пароль';
+    return;
+  }
+  document.getElementById('lockScreen').style.display = 'none';
+  afterUnlock();
+}
+
+function afterUnlock() {
+  const token = localStorage.getItem('gh_token');
+  if (!token) {
+    document.getElementById('tokenScreen').style.display = 'block';
+  } else {
+    showEditor();
+  }
+}
+
+function saveToken() {
+  const statusEl = document.getElementById('tokenStatus');
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) {
+    statusEl.textContent = 'Введите токен';
+    return;
+  }
+  localStorage.setItem('gh_token', token);
+  document.getElementById('tokenScreen').style.display = 'none';
+  showEditor();
+}
+
+function forgetToken() {
+  localStorage.removeItem('gh_token');
+  document.getElementById('editorScreen').style.display = 'none';
+  document.getElementById('tokenScreen').style.display = 'block';
+}
+
+function showEditor() {
+  document.getElementById('editorScreen').style.display = 'flex';
+  loadBank();
+}
+
+function setStatus(elId, text, cls) {
+  const el = document.getElementById(elId);
+  el.textContent = text;
+  el.className = 'status-msg' + (cls ? ' ' + cls : '');
+}
+
+async function loadBank() {
+  setStatus('mainStatus', 'Загружаю банк вопросов…');
+  try {
+    const res = await fetch(RAW_DATA_URL + '&r=' + Math.random());
+    if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+    const text = res.ok ? await res.text() : '';
+    const questions = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    originalById = new Map(questions.map(q => [q.id, JSON.parse(JSON.stringify(q))]));
+    working = questions.map(q => Object.assign(JSON.parse(JSON.stringify(q)), { _isNew: false, _deleted: false }));
+    renderAll();
+    setStatus('mainStatus', `Загружено вопросов: ${questions.length}`, 'ok');
+  } catch (e) {
+    setStatus('mainStatus', 'Не удалось загрузить банк: ' + e.message, 'error');
+  }
+}
+
+function slugify(s) {
+  return (s || 'section').toLowerCase()
+    .replace(/[^a-z0-9а-яё]+/gi, '-')
+    .replace(/^-+|-+$/g, '') || 'section';
+}
+function genId(section) {
+  const rand = Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${slugify(section)}-${rand}`;
+}
+
+function addQuestion() {
+  const section = working.length ? working[working.length - 1].section : '';
+  working.push({
+    id: genId(section || 'section'),
+    section: section || '',
+    position_tags: [],
+    type: 'single',
+    text: '',
+    options: ['', ''],
+    correct: [],
+    answer_reference: '',
+    points: 1,
+    _isNew: true,
+    _deleted: false,
+  });
+  renderAll();
+}
+
+function toggleDeleted(idx) {
+  const q = working[idx];
+  if (q._isNew) {
+    working.splice(idx, 1);
+  } else {
+    q._deleted = !q._deleted;
+  }
+  renderAll();
+}
+
+function validateRow(q) {
+  const errors = [];
+  if (!q.section || !q.section.trim()) errors.push('нет раздела');
+  if (!q.position_tags || q.position_tags.length === 0) errors.push('нет должностей');
+  if (!q.text || !q.text.trim()) errors.push('нет текста вопроса');
+  if (!(Number(q.points) > 0)) errors.push('баллы должны быть > 0');
+  if (q.type === 'single' || q.type === 'multiple') {
+    const opts = (q.options || []).filter(o => o !== '');
+    if (opts.length < 2) errors.push('нужно 2+ варианта');
+    if (!q.correct || q.correct.length === 0) errors.push('не указан правильный ответ');
+    if (q.type === 'single' && q.correct && q.correct.length > 1) errors.push('у single только 1 correct');
+    (q.correct || []).forEach(i => {
+      if (!(i >= 0 && i < (q.options || []).length)) errors.push(`correct=${i} вне диапазона`);
+    });
+  } else if (q.type === 'free') {
+    // options/correct для free не нужны, проверка не требуется
+  }
+  return errors;
+}
+
+function renderAll() {
+  const el = document.getElementById('qtable');
+  el.innerHTML = '';
+  const headers = ['ID', 'Раздел', 'Должности', 'Тип', 'Текст вопроса', 'Варианты (по строке)', 'Correct (индексы через запятую)', 'Баллы', 'Действия'];
+  headers.forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'h';
+    d.textContent = h;
+    el.appendChild(d);
+  });
+
+  const sections = new Set(working.map(q => q.section).filter(Boolean));
+  const dl = document.getElementById('sectionList');
+  dl.innerHTML = Array.from(sections).map(s => `<option value="${escapeHtml(s)}">`).join('');
+
+  working.forEach((q, idx) => {
+    const rowClass = q._deleted ? 'row-deleted' : (q._isNew ? 'row-new' : '');
+
+    el.appendChild(cell(rowClass, `<div class="id-cell">${escapeHtml(q.id)}</div>`));
+
+    el.appendChild(cell(rowClass, () => {
+      const input = mkEl('input', { type: 'text', value: q.section, list: 'sectionList' });
+      input.oninput = () => { q.section = input.value; revalidate(idx); };
+      return input;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const wrap = mkEl('div', { class: 'tags' });
+      POSITIONS.forEach(p => {
+        const label = document.createElement('label');
+        const cb = mkEl('input', { type: 'checkbox' });
+        cb.checked = (q.position_tags || []).includes(p.value);
+        cb.onchange = () => {
+          q.position_tags = q.position_tags || [];
+          if (cb.checked) { if (!q.position_tags.includes(p.value)) q.position_tags.push(p.value); }
+          else { q.position_tags = q.position_tags.filter(v => v !== p.value); }
+          revalidate(idx);
+        };
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(p.label));
+        wrap.appendChild(label);
+      });
+      return wrap;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const sel = mkEl('select', {});
+      TYPES.forEach(t => {
+        const opt = mkEl('option', { value: t.value });
+        opt.textContent = t.label;
+        if (t.value === q.type) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      sel.onchange = () => { q.type = sel.value; revalidate(idx); };
+      return sel;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const ta = mkEl('textarea', {});
+      ta.value = q.text || '';
+      ta.oninput = () => { q.text = ta.value; revalidate(idx); };
+      return ta;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const ta = mkEl('textarea', {});
+      ta.value = (q.options || []).join('\n');
+      ta.placeholder = 'Свободный ответ — не используется';
+      ta.oninput = () => { q.options = ta.value.split('\n'); revalidate(idx); };
+      return ta;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const input = mkEl('input', { type: 'text' });
+      input.value = (q.correct || []).join(',');
+      input.placeholder = '0,2';
+      input.oninput = () => {
+        q.correct = input.value.split(',').map(s => s.trim()).filter(s => s !== '').map(Number);
+        revalidate(idx);
+      };
+      return input;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const input = mkEl('input', { type: 'number', min: '0', step: '1' });
+      input.value = q.points != null ? q.points : 1;
+      input.oninput = () => { q.points = Number(input.value); revalidate(idx); };
+      return input;
+    }));
+
+    el.appendChild(cell(rowClass, () => {
+      const wrap = mkEl('div', { class: 'row-actions' });
+      const btn = document.createElement('button');
+      btn.textContent = q._deleted ? 'Восстановить' : (q._isNew ? 'Убрать' : 'Удалить');
+      btn.onclick = () => toggleDeleted(idx);
+      wrap.appendChild(btn);
+      const err = mkEl('div', { class: 'err', 'data-err-for': idx });
+      wrap.appendChild(err);
+      return wrap;
+    }));
+  });
+
+  working.forEach((q, idx) => revalidate(idx));
+  updatePublishState();
+}
+
+function cell(rowClass, content) {
+  const d = document.createElement('div');
+  d.className = 'c ' + rowClass;
+  if (typeof content === 'string') {
+    d.innerHTML = content;
+  } else {
+    d.appendChild(content());
+  }
+  return d;
+}
+function mkEl(tag, attrs) {
+  const e = document.createElement(tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v));
+  return e;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function revalidate(idx) {
+  const q = working[idx];
+  const errs = q._deleted ? [] : validateRow(q);
+  const errEl = document.querySelector(`[data-err-for="${idx}"]`);
+  if (errEl) errEl.textContent = errs.length ? '⚠ ' + errs.join(', ') : '';
+  updatePublishState();
+}
+
+function updatePublishState() {
+  const hasErrors = working.some((q, idx) => !q._deleted && validateRow(q).length > 0);
+  document.getElementById('publishBtn').disabled = hasErrors;
+}
+
+function plainQuestion(q) {
+  const base = {
+    id: q.id,
+    section: q.section,
+    position_tags: q.position_tags || [],
+    type: q.type,
+    text: q.text,
+    points: Number(q.points) || 1,
+  };
+  if (q.type === 'free') {
+    if (q.answer_reference) base.answer_reference = q.answer_reference;
+  } else {
+    base.options = (q.options || []).filter(o => o !== '');
+    base.correct = q.correct || [];
+  }
+  return base;
+}
+
+function isEqualQuestion(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function computeDiff() {
+  const ops = [];
+  working.forEach(q => {
+    const plain = plainQuestion(q);
+    if (q._isNew) {
+      if (!q._deleted) ops.push({ op: 'add', question: plain });
+      return; // новый и удалённый локально — вообще не публикуется
+    }
+    if (q._deleted) {
+      ops.push({ op: 'delete', id: q.id });
+      return;
+    }
+    const orig = originalById.get(q.id);
+    if (!orig || !isEqualQuestion(orig, plain)) {
+      ops.push({ op: 'edit', id: q.id, question: plain });
+    }
+  });
+  return ops;
+}
+
+async function publish() {
+  const ops = computeDiff();
+  if (ops.length === 0) {
+    setStatus('mainStatus', 'Изменений нет — публиковать нечего', 'ok');
+    return;
+  }
+  const token = localStorage.getItem('gh_token');
+  if (!token) { forgetToken(); return; }
+
+  setStatus('mainStatus', `Отправляю ${ops.length} изменени(я/й)…`);
+  document.getElementById('publishBtn').disabled = true;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ref: BRANCH, inputs: { diff: JSON.stringify(ops) } }),
+    });
+    if (res.status === 204) {
+      setStatus('mainStatus', 'Отправлено. Изменения применятся в течение ~минуты — потом нажми «Обновить банк».', 'ok');
+    } else if (res.status === 401 || res.status === 403) {
+      setStatus('mainStatus', 'Токен недействителен или не хватает прав (Actions: Read and write)', 'error');
+      forgetToken();
+    } else {
+      const body = await res.text();
+      setStatus('mainStatus', `Ошибка GitHub API: ${res.status} ${body}`, 'error');
+    }
+  } catch (e) {
+    setStatus('mainStatus', 'Ошибка сети: ' + e.message, 'error');
+  } finally {
+    updatePublishState();
+  }
+}
+</script>
+</body>
+</html>
