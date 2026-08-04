@@ -36,29 +36,66 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .status-msg.error { color: #e74c3c; }
 .status-msg.ok { color: var(--green); }
 
-.toolbar { width: 100%; max-width: 1200px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar { width: 100%; max-width: 640px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .toolbar .spacer { flex: 1; }
 .toolbar .status-msg { margin: 0; text-align: left; }
 
-.table-wrap { width: 100%; max-width: 1200px; overflow-x: auto; border: 1.5px solid var(--border); border-radius: 10px; }
-.qtable { display: grid; grid-template-columns: 110px 140px 150px 110px minmax(180px,1.4fr) minmax(180px,1.4fr) 90px 70px 90px; min-width: 1150px; }
-.qtable .h { background: #f4f7fb; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; padding: 10px 8px; border-bottom: 1.5px solid var(--border); position: sticky; top: 0; }
-.qtable .c { padding: 8px; border-bottom: 1px solid var(--border); background: #fff; font-size: 13px; }
-.qtable .row-new .c { background: #f2fbf5; }
-.qtable .row-deleted .c { background: #fdf2f2; opacity: .6; }
-.qtable textarea, .qtable input[type=text], .qtable input[type=number], .qtable select {
-  width: 100%; padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 12.5px; color: var(--text); background: #fafcff; resize: vertical;
-}
-.qtable textarea { min-height: 44px; }
-.qtable .id-cell { font-size: 11px; color: var(--muted); word-break: break-all; }
-.qtable .tags { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; }
-.qtable .tags label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-.qtable .err { color: #e74c3c; font-size: 10.5px; margin-top: 4px; }
-.qtable .row-actions { display: flex; flex-direction: column; gap: 6px; }
-.qtable .row-actions button { font-size: 11.5px; padding: 5px 8px; border-radius: 6px; border: 1.5px solid var(--border); background: #fff; cursor: pointer; }
-.qtable .row-actions button:hover { background: #f4f7fb; }
+.hint { font-size: 12px; color: var(--muted); max-width: 640px; }
 
-.hint { font-size: 12px; color: var(--muted); max-width: 1200px; }
+/* --- список карточек-вопросов --- */
+.qlist { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 640px; }
+
+.add-card-btn {
+  width: 100%; border: none; border-radius: 12px; background: var(--blue); color: #fff;
+  font-size: 30px; font-weight: 700; line-height: 1; cursor: pointer; padding: 22px;
+  box-shadow: 0 4px 16px rgba(26,86,160,.20); transition: background .18s, transform .1s;
+}
+.add-card-btn:hover { background: #154988; }
+.add-card-btn:active { transform: scale(.99); }
+
+.q-card { background: #fff; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.q-card.deleted { opacity: .5; }
+
+.q-id { font-size: 10px; color: var(--muted); word-break: break-all; }
+
+.q-title-row { display: flex; align-items: flex-start; gap: 8px; }
+.q-title-input {
+  flex: 1; font-size: 16px; font-weight: 700; font-family: inherit; color: var(--text);
+  border: none; background: transparent; outline: none; resize: none; overflow: hidden; padding: 2px 0;
+}
+.q-title-input::placeholder { color: #b0bfcc; font-weight: 400; }
+
+.icon-btn { border: none; background: none; cursor: pointer; font-size: 16px; padding: 2px 4px; color: var(--muted); flex-shrink: 0; line-height: 1; }
+.icon-btn:hover { color: var(--text); }
+.icon-btn.delete:hover { color: #e74c3c; }
+.icon-btn.done { color: var(--green); }
+
+.q-meta-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.q-section-input { border: none; background: transparent; font-size: 12px; color: var(--muted); font-family: inherit; outline: none; width: 120px; padding: 2px 0; }
+.q-section-input::placeholder { color: #c3cfdb; }
+.q-meta-sep { color: var(--border); }
+.q-positions-summary { flex: 1; }
+
+.q-edit { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; margin-top: 4px; border-top: 1px dashed var(--border); }
+
+.q-positions-edit { display: flex; gap: 16px; font-size: 12.5px; flex-wrap: wrap; }
+.q-positions-edit label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+.q-type-select { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); align-self: flex-start; }
+
+.q-options { display: flex; flex-direction: column; gap: 6px; }
+.q-option-row { display: flex; align-items: center; gap: 8px; }
+.q-option-check { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--green); cursor: pointer; }
+.q-option-row input[type=text] { flex: 1; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); }
+.q-option-remove { border: none; background: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 2px 4px; }
+.q-option-remove:hover { color: #e74c3c; }
+
+.q-add-option { align-self: flex-start; font-size: 12.5px; padding: 6px 12px; border-radius: 7px; border: 1.5px dashed var(--border); background: #fff; color: var(--blue); cursor: pointer; }
+.q-add-option:hover { background: #f4f7fb; }
+
+.q-free-input { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); }
+
+.q-err { font-size: 11px; color: #e74c3c; min-height: 14px; }
 </style>
 </head>
 <body>
@@ -86,7 +123,6 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
   <div id="editorScreen" style="display:none; width:100%; flex-direction:column; align-items:center; gap:20px;">
     <div class="toolbar">
-      <button class="btn btn-blue" onclick="addQuestion()">+ Добавить вопрос</button>
       <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>Опубликовать изменения</button>
       <button class="btn btn-ghost" onclick="loadBank()">Обновить банк</button>
       <button class="btn btn-ghost" onclick="forgetToken()">Сменить токен</button>
@@ -94,9 +130,8 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
       <div class="status-msg" id="mainStatus"></div>
     </div>
     <div class="hint">Правки копятся локально в браузере. Ничего не уходит на GitHub, пока не нажата «Опубликовать изменения» — это один запуск workflow на всю сессию редактирования.</div>
-    <div class="table-wrap">
-      <div class="qtable" id="qtable"></div>
-    </div>
+
+    <div class="qlist" id="qlist"></div>
   </div>
 
 </div>
@@ -121,11 +156,11 @@ const POSITIONS = [
 const TYPES = [
   { value: 'single', label: 'Один ответ' },
   { value: 'multiple', label: 'Несколько ответов' },
-  { value: 'free', label: 'Свободный ответ' },
+  { value: 'free', label: 'Свободный текст' },
 ];
 
-let originalById = new Map();  // id -> plain question snapshot (as loaded from repo)
-let working = [];              // array of question objects with _isNew / _deleted
+let originalById = new Map();  // id -> plain question snapshot (как загружено из репозитория)
+let working = [];              // рабочие вопросы: канонические поля + _isNew / _deleted / _expanded
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -196,8 +231,8 @@ async function loadBank() {
     const text = res.ok ? await res.text() : '';
     const questions = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
     originalById = new Map(questions.map(q => [q.id, JSON.parse(JSON.stringify(q))]));
-    working = questions.map(q => Object.assign(JSON.parse(JSON.stringify(q)), { _isNew: false, _deleted: false }));
-    renderAll();
+    working = questions.map(q => Object.assign(JSON.parse(JSON.stringify(q)), { _isNew: false, _deleted: false, _expanded: false }));
+    renderList();
     setStatus('mainStatus', `Загружено вопросов: ${questions.length}`, 'ok');
   } catch (e) {
     setStatus('mainStatus', 'Не удалось загрузить банк: ' + e.message, 'error');
@@ -216,7 +251,7 @@ function genId(section) {
 
 function addQuestion() {
   const section = working.length ? working[working.length - 1].section : '';
-  working.push({
+  working.unshift({
     id: genId(section || 'section'),
     section: section || '',
     position_tags: [],
@@ -225,11 +260,11 @@ function addQuestion() {
     options: ['', ''],
     correct: [],
     answer_reference: '',
-    points: 1,
     _isNew: true,
     _deleted: false,
+    _expanded: true,
   });
-  renderAll();
+  renderList();
 }
 
 function toggleDeleted(idx) {
@@ -239,7 +274,7 @@ function toggleDeleted(idx) {
   } else {
     q._deleted = !q._deleted;
   }
-  renderAll();
+  renderList();
 }
 
 function validateRow(q) {
@@ -247,137 +282,19 @@ function validateRow(q) {
   if (!q.section || !q.section.trim()) errors.push('нет раздела');
   if (!q.position_tags || q.position_tags.length === 0) errors.push('нет должностей');
   if (!q.text || !q.text.trim()) errors.push('нет текста вопроса');
-  if (!(Number(q.points) > 0)) errors.push('баллы должны быть > 0');
   if (q.type === 'single' || q.type === 'multiple') {
-    const opts = (q.options || []).filter(o => o !== '');
+    const opts = (q.options || []).filter(o => o && o.trim() !== '');
     if (opts.length < 2) errors.push('нужно 2+ варианта');
     if (!q.correct || q.correct.length === 0) errors.push('не указан правильный ответ');
-    if (q.type === 'single' && q.correct && q.correct.length > 1) errors.push('у single только 1 correct');
-    (q.correct || []).forEach(i => {
-      if (!(i >= 0 && i < (q.options || []).length)) errors.push(`correct=${i} вне диапазона`);
-    });
-  } else if (q.type === 'free') {
-    // options/correct для free не нужны, проверка не требуется
   }
   return errors;
 }
 
-function renderAll() {
-  const el = document.getElementById('qtable');
-  el.innerHTML = '';
-  const headers = ['ID', 'Раздел', 'Должности', 'Тип', 'Текст вопроса', 'Варианты (по строке)', 'Correct (индексы через запятую)', 'Баллы', 'Действия'];
-  headers.forEach(h => {
-    const d = document.createElement('div');
-    d.className = 'h';
-    d.textContent = h;
-    el.appendChild(d);
-  });
-
-  const sections = new Set(working.map(q => q.section).filter(Boolean));
-  const dl = document.getElementById('sectionList');
-  dl.innerHTML = Array.from(sections).map(s => `<option value="${escapeHtml(s)}">`).join('');
-
-  working.forEach((q, idx) => {
-    const rowClass = q._deleted ? 'row-deleted' : (q._isNew ? 'row-new' : '');
-
-    el.appendChild(cell(rowClass, `<div class="id-cell">${escapeHtml(q.id)}</div>`));
-
-    el.appendChild(cell(rowClass, () => {
-      const input = mkEl('input', { type: 'text', value: q.section, list: 'sectionList' });
-      input.oninput = () => { q.section = input.value; revalidate(idx); };
-      return input;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const wrap = mkEl('div', { class: 'tags' });
-      POSITIONS.forEach(p => {
-        const label = document.createElement('label');
-        const cb = mkEl('input', { type: 'checkbox' });
-        cb.checked = (q.position_tags || []).includes(p.value);
-        cb.onchange = () => {
-          q.position_tags = q.position_tags || [];
-          if (cb.checked) { if (!q.position_tags.includes(p.value)) q.position_tags.push(p.value); }
-          else { q.position_tags = q.position_tags.filter(v => v !== p.value); }
-          revalidate(idx);
-        };
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(p.label));
-        wrap.appendChild(label);
-      });
-      return wrap;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const sel = mkEl('select', {});
-      TYPES.forEach(t => {
-        const opt = mkEl('option', { value: t.value });
-        opt.textContent = t.label;
-        if (t.value === q.type) opt.selected = true;
-        sel.appendChild(opt);
-      });
-      sel.onchange = () => { q.type = sel.value; revalidate(idx); };
-      return sel;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const ta = mkEl('textarea', {});
-      ta.value = q.text || '';
-      ta.oninput = () => { q.text = ta.value; revalidate(idx); };
-      return ta;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const ta = mkEl('textarea', {});
-      ta.value = (q.options || []).join('\n');
-      ta.placeholder = 'Свободный ответ — не используется';
-      ta.oninput = () => { q.options = ta.value.split('\n'); revalidate(idx); };
-      return ta;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const input = mkEl('input', { type: 'text' });
-      input.value = (q.correct || []).join(',');
-      input.placeholder = '0,2';
-      input.oninput = () => {
-        q.correct = input.value.split(',').map(s => s.trim()).filter(s => s !== '').map(Number);
-        revalidate(idx);
-      };
-      return input;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const input = mkEl('input', { type: 'number', min: '0', step: '1' });
-      input.value = q.points != null ? q.points : 1;
-      input.oninput = () => { q.points = Number(input.value); revalidate(idx); };
-      return input;
-    }));
-
-    el.appendChild(cell(rowClass, () => {
-      const wrap = mkEl('div', { class: 'row-actions' });
-      const btn = document.createElement('button');
-      btn.textContent = q._deleted ? 'Восстановить' : (q._isNew ? 'Убрать' : 'Удалить');
-      btn.onclick = () => toggleDeleted(idx);
-      wrap.appendChild(btn);
-      const err = mkEl('div', { class: 'err', 'data-err-for': idx });
-      wrap.appendChild(err);
-      return wrap;
-    }));
-  });
-
-  working.forEach((q, idx) => revalidate(idx));
-  updatePublishState();
+function positionsLabel(tags) {
+  const labels = POSITIONS.filter(p => (tags || []).includes(p.value)).map(p => p.label);
+  return labels.length ? labels.join(', ') : '—';
 }
 
-function cell(rowClass, content) {
-  const d = document.createElement('div');
-  d.className = 'c ' + rowClass;
-  if (typeof content === 'string') {
-    d.innerHTML = content;
-  } else {
-    d.appendChild(content());
-  }
-  return d;
-}
 function mkEl(tag, attrs) {
   const e = document.createElement(tag);
   Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v));
@@ -385,6 +302,185 @@ function mkEl(tag, attrs) {
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderList() {
+  const el = document.getElementById('qlist');
+  el.innerHTML = '';
+
+  const addBtn = mkEl('button', { class: 'add-card-btn' });
+  addBtn.textContent = '+';
+  addBtn.onclick = addQuestion;
+  el.appendChild(addBtn);
+
+  const sections = new Set(working.map(q => q.section).filter(Boolean));
+  document.getElementById('sectionList').innerHTML = Array.from(sections).map(s => `<option value="${escapeHtml(s)}">`).join('');
+
+  working.forEach((q, idx) => el.appendChild(buildCard(q, idx)));
+
+  working.forEach((q, idx) => revalidate(idx));
+  updatePublishState();
+}
+
+function buildCard(q, idx) {
+  const card = mkEl('div', { class: 'q-card' + (q._deleted ? ' deleted' : '') });
+
+  const idRow = mkEl('div', { class: 'q-id' });
+  idRow.textContent = q.id;
+  card.appendChild(idRow);
+
+  const titleRow = mkEl('div', { class: 'q-title-row' });
+  const titleInput = mkEl('textarea', { class: 'q-title-input', rows: '1', placeholder: 'Текст вопроса…' });
+  titleInput.value = q.text || '';
+  const autoGrow = () => { titleInput.style.height = 'auto'; titleInput.style.height = titleInput.scrollHeight + 'px'; };
+  titleInput.oninput = () => { q.text = titleInput.value; revalidate(idx); autoGrow(); };
+  titleRow.appendChild(titleInput);
+
+  const delBtn = mkEl('button', { class: 'icon-btn delete', title: 'Удалить вопрос' });
+  delBtn.textContent = '🗑';
+  delBtn.onclick = () => toggleDeleted(idx);
+  titleRow.appendChild(delBtn);
+  card.appendChild(titleRow);
+
+  const metaRow = mkEl('div', { class: 'q-meta-row' });
+  const sectionInput = mkEl('input', { type: 'text', class: 'q-section-input', list: 'sectionList', placeholder: 'раздел' });
+  sectionInput.value = q.section || '';
+  sectionInput.oninput = () => { q.section = sectionInput.value; revalidate(idx); };
+  metaRow.appendChild(sectionInput);
+
+  const sep = mkEl('span', { class: 'q-meta-sep' });
+  sep.textContent = '|';
+  metaRow.appendChild(sep);
+
+  const posSummary = mkEl('span', { class: 'q-positions-summary' });
+  posSummary.textContent = positionsLabel(q.position_tags);
+  metaRow.appendChild(posSummary);
+
+  const editBlock = buildEditBlock(q, idx, posSummary);
+
+  const editBtn = mkEl('button', { class: 'icon-btn' + (q._expanded ? ' done' : ''), title: 'Редактировать' });
+  editBtn.textContent = q._expanded ? '✓' : '✎';
+  editBtn.onclick = () => {
+    q._expanded = !q._expanded;
+    editBlock.style.display = q._expanded ? 'flex' : 'none';
+    editBtn.textContent = q._expanded ? '✓' : '✎';
+    editBtn.classList.toggle('done', q._expanded);
+  };
+  metaRow.appendChild(editBtn);
+  card.appendChild(metaRow);
+
+  card.appendChild(editBlock);
+
+  const err = mkEl('div', { class: 'q-err', 'data-err-for': String(idx) });
+  card.appendChild(err);
+
+  // авто-высота текстареи вопроса при первом рендере
+  requestAnimationFrame(() => { titleInput.style.height = 'auto'; titleInput.style.height = titleInput.scrollHeight + 'px'; });
+
+  return card;
+}
+
+function buildEditBlock(q, idx, posSummaryEl) {
+  const block = mkEl('div', { class: 'q-edit' });
+  block.style.display = q._expanded ? 'flex' : 'none';
+
+  const posRow = mkEl('div', { class: 'q-positions-edit' });
+  POSITIONS.forEach(p => {
+    const label = document.createElement('label');
+    const cb = mkEl('input', { type: 'checkbox' });
+    cb.checked = (q.position_tags || []).includes(p.value);
+    cb.onchange = () => {
+      q.position_tags = q.position_tags || [];
+      if (cb.checked) { if (!q.position_tags.includes(p.value)) q.position_tags.push(p.value); }
+      else { q.position_tags = q.position_tags.filter(v => v !== p.value); }
+      posSummaryEl.textContent = positionsLabel(q.position_tags);
+      revalidate(idx);
+    };
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(p.label));
+    posRow.appendChild(label);
+  });
+  block.appendChild(posRow);
+
+  const typeSel = mkEl('select', { class: 'q-type-select' });
+  TYPES.forEach(t => {
+    const opt = mkEl('option', { value: t.value });
+    opt.textContent = t.label;
+    if (t.value === q.type) opt.selected = true;
+    typeSel.appendChild(opt);
+  });
+  const bodyContainer = mkEl('div', { class: 'q-type-body' });
+  typeSel.onchange = () => {
+    q.type = typeSel.value;
+    if (q.type === 'free') { q.options = []; q.correct = []; }
+    else if (!q.options || q.options.length === 0) { q.options = ['', '']; q.correct = []; }
+    renderTypeBody(q, idx, bodyContainer);
+    revalidate(idx);
+  };
+  block.appendChild(typeSel);
+  block.appendChild(bodyContainer);
+  renderTypeBody(q, idx, bodyContainer);
+
+  return block;
+}
+
+function renderTypeBody(q, idx, container) {
+  container.innerHTML = '';
+
+  if (q.type === 'free') {
+    const input = mkEl('input', { type: 'text', class: 'q-free-input', placeholder: 'Эталон ответа (необязательно, для проверяющего)' });
+    input.value = q.answer_reference || '';
+    input.oninput = () => { q.answer_reference = input.value; revalidate(idx); };
+    container.appendChild(input);
+    return;
+  }
+
+  const optsWrap = mkEl('div', { class: 'q-options' });
+  (q.options || []).forEach((opt, oi) => {
+    const row = mkEl('div', { class: 'q-option-row' });
+
+    const cb = mkEl('input', { type: q.type === 'single' ? 'radio' : 'checkbox', class: 'q-option-check' });
+    if (q.type === 'single') cb.name = 'correct-' + q.id;
+    cb.checked = (q.correct || []).includes(oi);
+    cb.onchange = () => {
+      if (q.type === 'single') {
+        q.correct = cb.checked ? [oi] : [];
+      } else {
+        q.correct = q.correct || [];
+        if (cb.checked) { if (!q.correct.includes(oi)) q.correct.push(oi); }
+        else { q.correct = q.correct.filter(i => i !== oi); }
+      }
+      revalidate(idx);
+    };
+    row.appendChild(cb);
+
+    const input = mkEl('input', { type: 'text', placeholder: 'Вариант ответа' });
+    input.value = opt;
+    input.oninput = () => { q.options[oi] = input.value; revalidate(idx); };
+    row.appendChild(input);
+
+    const rm = mkEl('button', { class: 'q-option-remove', title: 'Удалить вариант' });
+    rm.textContent = '✕';
+    rm.onclick = () => {
+      q.options.splice(oi, 1);
+      q.correct = (q.correct || []).filter(i => i !== oi).map(i => (i > oi ? i - 1 : i));
+      renderTypeBody(q, idx, container);
+      revalidate(idx);
+    };
+    row.appendChild(rm);
+
+    optsWrap.appendChild(row);
+  });
+  container.appendChild(optsWrap);
+
+  const addBtn = mkEl('button', { class: 'q-add-option' });
+  addBtn.textContent = '+ Добавить вариант';
+  addBtn.onclick = () => {
+    q.options = q.options || [];
+    q.options.push('');
+    renderTypeBody(q, idx, container);
+  };
+  container.appendChild(addBtn);
 }
 
 function revalidate(idx) {
@@ -396,7 +492,7 @@ function revalidate(idx) {
 }
 
 function updatePublishState() {
-  const hasErrors = working.some((q, idx) => !q._deleted && validateRow(q).length > 0);
+  const hasErrors = working.some(q => !q._deleted && validateRow(q).length > 0);
   document.getElementById('publishBtn').disabled = hasErrors;
 }
 
@@ -407,7 +503,6 @@ function plainQuestion(q) {
     position_tags: q.position_tags || [],
     type: q.type,
     text: q.text,
-    points: Number(q.points) || 1,
   };
   if (q.type === 'free') {
     if (q.answer_reference) base.answer_reference = q.answer_reference;
@@ -435,7 +530,9 @@ function computeDiff() {
       return;
     }
     const orig = originalById.get(q.id);
-    if (!orig || !isEqualQuestion(orig, plain)) {
+    // сравниваем через ту же нормализацию (plainQuestion), чтобы легаси-поля вроде
+    // старого "points" не создавали фантомный diff для нетронутых вопросов
+    if (!orig || !isEqualQuestion(plainQuestion(orig), plain)) {
       ops.push({ op: 'edit', id: q.id, question: plain });
     }
   });

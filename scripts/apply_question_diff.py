@@ -4,7 +4,7 @@ import json
 import os
 
 DATA_PATH = "data/questions.jsonl"
-REQUIRED_COMMON = {"section", "position_tags", "type", "text", "points"}
+REQUIRED_COMMON = {"section", "position_tags", "type", "text"}
 
 
 def load_bank(path):
