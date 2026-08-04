@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Редактор вопросов — Автоскан</title>
+<title>Редактор вопросов — Автоскан.Тестирование</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&display=swap');
 :root { --blue: #1a56a0; --border: #d0dcea; --muted: #6b7f9a; --text: #1a2a4a; --green: #1e9e52; }
@@ -104,6 +104,7 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 <body>
 
 <div class="site-header"><img src="header.jpg" alt="АвтоСкан"></div>
+<!-- TODO: придумать что сделать с тупым растягиванием -->
 
 <div class="main">
 
@@ -116,23 +117,23 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
   </div>
 
   <div id="tokenScreen" class="card" style="display:none">
-    <div class="panel-title">GitHub-токен</div>
-    <div class="field-label">Fine-grained PAT (Actions: Read and write)</div>
+    <div class="panel-title">Токен для редактирования</div>
+    <div class="field-label">Fine-grained PAT</div>
     <input class="field-input" id="tokenInput" type="password" placeholder="github_pat_..." autocomplete="off">
     <button class="btn btn-blue" style="width:100%" onclick="saveToken()">Сохранить и продолжить</button>
     <div class="status-msg error" id="tokenStatus"></div>
-    <div class="hint" style="margin-top:8px;max-width:none;">Токен хранится только в этом браузере (localStorage), в код страницы и в репозиторий не попадает.</div>
+    <div class="hint" style="margin-top:8px;max-width:none;">При обновнелии страницы или выходе из нее, необходимо будет ввести его снова</div>
   </div>
 
   <div id="editorScreen" style="display:none; width:100%; flex-direction:column; align-items:center; gap:20px;">
     <div class="toolbar">
       <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>Опубликовать изменения</button>
-      <button class="btn btn-ghost" onclick="loadBank()">Обновить банк</button>
+      <button class="btn btn-ghost" onclick="loadBank()">Получить</button>
       <button class="btn btn-ghost" onclick="forgetToken()">Сменить токен</button>
       <div class="spacer"></div>
       <div class="status-msg" id="mainStatus"></div>
     </div>
-    <div class="hint">Правки копятся локально в браузере. Ничего не уходит на GitHub, пока не нажата «Опубликовать изменения» — это один запуск workflow на всю сессию редактирования.</div>
+    <div class="hint">Все изменения происходят локально. Изменения обязательно нужно Опубликовать по завершению, так же можно их отменить через "Получить" - сбрасывает до последнего актуального состояния. Если обновить страницу - доступ нужно будет указывать снова и весь прогресс будет сброшен.</div>
 
     <div class="qlist" id="qlist"></div>
   </div>
@@ -143,6 +144,8 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 
 <script>
+
+  //глобальные настройки под последующий шаблон
 const OWNER = 'KeeGooRoomiE';
 const REPO = 'avtoscan-refactored-octo-spork';
 const BRANCH = 'main';
@@ -151,9 +154,9 @@ const PASSWORD_HASH_HEX = 'f956298be4244f631c2b9e4125a6c0447b85898319626d6d2000c
 const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
 
 const POSITIONS = [
-  { value: 'mop', label: 'МОП' },
-  { value: 'tp', label: 'ТП' },
-  { value: 'service', label: 'Сервис' },
+  { value: 'mop', label: 'Менеджер' },
+  { value: 'tp', label: 'Техническая поддержка' },
+  { value: 'service', label: 'Отдел сервиса' },
 ];
 const TYPES = [
   { value: 'single', label: 'Один ответ' },
@@ -161,6 +164,7 @@ const TYPES = [
   { value: 'free', label: 'Свободный текст' },
 ];
 
+//иконки одной кучей, потому что тут их легче редачить
 const ICON_TRASH = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6M6 6l.6 9.4A1.5 1.5 0 0 0 8.1 17h3.8a1.5 1.5 0 0 0 1.5-1.6L14 6"/></svg>';
 const ICON_PENCIL = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 3.4a1.6 1.6 0 0 1 2.3 2.3L6.8 14.6l-3.4.7.7-3.4 9.3-9.5z"/></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
@@ -388,7 +392,7 @@ function buildCard(q, idx) {
   const err = mkEl('div', { class: 'q-err', 'data-err-for': String(idx) });
   card.appendChild(err);
 
-  // авто-высота текстареи вопроса при первом рендере
+  // авто-высота текстареи вопроса при первом рендере, почему-то ломалась в самом начале
   requestAnimationFrame(() => { titleInput.style.height = 'auto'; titleInput.style.height = titleInput.scrollHeight + 'px'; });
 
   return card;
@@ -487,7 +491,7 @@ function renderTypeBody(q, idx, container) {
   container.innerHTML = '';
 
   if (q.type === 'free') {
-    const input = mkEl('input', { type: 'text', class: 'q-free-input', placeholder: 'Эталон ответа (необязательно, для проверяющего)' });
+    const input = mkEl('input', { type: 'text', class: 'q-free-input', placeholder: 'Пример ответа (необязательно, для проверяющего)' });
     input.value = q.answer_reference || '';
     input.oninput = () => { q.answer_reference = input.value; revalidate(idx); };
     container.appendChild(input);
@@ -582,7 +586,7 @@ function computeDiff() {
     const plain = plainQuestion(q);
     if (q._isNew) {
       if (!q._deleted) ops.push({ op: 'add', question: plain });
-      return; // новый и удалённый локально — вообще не публикуется
+      return; // новый и удалённый локально — вообще не публикуется, иначе удаление будет перманентное сразу и рейс кондишн
     }
     if (q._deleted) {
       ops.push({ op: 'delete', id: q.id });
