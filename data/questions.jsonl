@@ -1,0 +1,3 @@
+{"id": "section-6b7228", "section": "Название_Раздела", "position_tags": ["tp", "service"], "type": "free", "text": "Заданный вопрос", "points": 1}
+{"id": "название-раздела-121d1c", "section": "Название_Раздела", "position_tags": ["mop"], "type": "multiple", "text": "Второй вопрос", "points": 1, "options": ["Несколько ответов", "Разнообразных вообще"], "correct": [1]}
+{"id": "название-раздела-cb672c", "section": "Название_Раздела", "position_tags": ["mop", "tp", "service"], "type": "single", "text": "Третий вопрос одинарный", "points": 1, "options": ["Несколько", "Разных", "Ответов"], "correct": [1]}
