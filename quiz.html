@@ -216,6 +216,7 @@ const POSITIONS = [
   { value: 'tp', label: 'ТП' },
   { value: 'service', label: 'Сервис' },
 ];
+const POSITION_LABELS = Object.fromEntries(POSITIONS.map(p => [p.value, p.label]));
 
 const DEFAULT_QUESTION_COUNT = 20;
 const DEFAULT_TIMER_SECONDS = 20 * 60;
@@ -255,7 +256,12 @@ document.getElementById('positionSelect').innerHTML =
       showResult(token, false);
       return;
     } catch (e) {
-      // битая ссылка — падаем обратно на стартовый экран
+      // битая ссылка — падаем обратно на стартовый экран, а не оставляем полу-отрисованный результат
+      console.error('Не удалось разобрать ссылку-результат:', e);
+      location.hash = '';
+      document.getElementById('resultScreen').style.display = 'none';
+      document.getElementById('quizScreen').style.display = 'none';
+      document.getElementById('startScreen').style.display = 'flex';
     }
   }
   try {
@@ -467,8 +473,6 @@ function finishQuiz() {
 }
 
 // ---------- экран результата ----------
-
-const POSITION_LABELS = Object.fromEntries(POSITIONS.map(p => [p.value, p.label]));
 
 function showResult(token, alreadyOnPage) {
   document.getElementById('startScreen').style.display = 'none';
