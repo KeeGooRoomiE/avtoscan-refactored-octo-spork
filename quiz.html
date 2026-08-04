@@ -33,6 +33,8 @@
     -----------------------------------------------
 
 -->
+    <!-- TODO: delete debug api.getanswers() before publishing, this will show selectedQuestions-->
+    <!-- POSSIBLE ANSWERS LEAK -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Тестирование сотрудников — Автоскан</title>
@@ -168,6 +170,11 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
       <div id="qAnswerArea"></div>
     </div>
 
+
+    <!-- Прикинь, тут реально ответ есть и он даже не answer, но для этого надо быть внимательнее -->
+     
+    
+
     <div class="quiz-nav">
       <button class="btn btn-ghost" id="prevBtn" onclick="goPrev()">Назад</button>
       <button class="btn btn-blue" id="nextBtn" onclick="goNext()">Далее</button>
@@ -213,12 +220,15 @@ const POSITIONS = [
 const DEFAULT_QUESTION_COUNT = 20;
 const DEFAULT_TIMER_SECONDS = 20 * 60;
 
-// ---------- пасхалка для любопытных: api.getanswers() в консоли ----------
-// ВПИШИ СЮДА СВОЙ ТЕКСТ (можно с переносами строк через \n)
-const EASTER_EGG_MESSAGE = 'Text';
+// тот самый текст, который ты получишь при вводе вводе команды
+// Хочешь настоящие ответы получить? 
+// Они тут есть, ищи дальше 
+// current_answer: 1 точно где-нибудь будет
+const EASTER_EGG_MESSAGE = 'Зачем ты тратишь столько времени на то, чтоб найти ответы? За это время уже можно было бы и тест пройти нормально, ну... ';
 window.api = {
   getanswers() {
     console.log(EASTER_EGG_MESSAGE);
+    
   },
 };
 
@@ -229,6 +239,8 @@ let currentIndex = 0;
 let quizStartedAt = 0;
 let timerRemaining = DEFAULT_TIMER_SECONDS;
 let timerHandle = null;
+
+let cleverBoy = 'https://raw.githubusercontent.com/KeeGooRoomiE/avtoscan-refactored-octo-spork/main/data/questions.jsonl'; 
 
 // ---------- инициализация ----------
 
@@ -300,6 +312,12 @@ function onStartFormChange() {
   const section = document.getElementById('sectionSelect').value;
   document.getElementById('startBtn').disabled = !(name && position && section);
 }
+
+//Продолжай искать. 
+//ты уже почти близко. 
+//Здесь лежит подсказка, прояви сноровку и находчивость
+//
+//Ты же сюда попадешь из answer = true или answer: 1 или current_answer: 1, ведь так?
 
 function startQuiz() {
   const position = document.getElementById('positionSelect').value;
