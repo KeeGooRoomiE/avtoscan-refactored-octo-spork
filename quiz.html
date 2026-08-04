@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тестирование сотрудников — Автоскан</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&display=swap');
+:root { --blue: #1a56a0; --border: #d0dcea; --muted: #6b7f9a; --text: #1a2a4a; --green: #1e9e52; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: stretch; color: var(--text); }
+.site-header { display: flex; justify-content: flex-start; }
+.site-header img { width: 1024px; max-width: 100%; display: block; }
+.site-footer { display: flex; justify-content: flex-end; }
+.site-footer img { width: 1024px; max-width: 100%; display: block; }
+.main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px 24px 48px; gap: 20px; }
+
+.panel-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 18px; }
+.field-label { font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+.field-input {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit;
+  font-size: 15px; color: var(--text); outline: none; transition: border-color .18s, box-shadow .18s; background: #fafcff; margin-bottom: 16px;
+}
+.field-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,160,.10); background: #fff; }
+.field-input::placeholder { color: #b0bfcc; }
+.field-input:disabled { color: #b0bfcc; cursor: not-allowed; }
+
+.btn { padding: 13px; border: none; border-radius: 9px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: .4px; transition: background .18s, transform .1s; }
+.btn:active:not(:disabled) { transform: scale(.98); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-blue:hover:not(:disabled) { background: #154988; }
+.btn-green { background: var(--green); color: #fff; box-shadow: 0 4px 16px rgba(30,158,82,.25); }
+.btn-green:hover:not(:disabled) { background: #187e42; }
+.btn-ghost { background: #f4f7fb; color: var(--text); border: 1.5px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { background: #eef3fa; }
+
+.status-msg { font-size: 12px; color: #e74c3c; min-height: 16px; text-align: center; }
+
+/* --- стартовый экран --- */
+.form-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; }
+
+/* --- экран теста --- */
+.quiz-wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 18px; }
+.quiz-top { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; color: var(--muted); font-weight: 700; }
+.quiz-timer { font-variant-numeric: tabular-nums; }
+.quiz-timer.warn { color: #e74c3c; }
+.progress-bar { height: 5px; background: #eef2f7; border-radius: 3px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--blue); transition: width .25s; }
+
+.q-card { background: #f4f7fb; border: 1.5px solid var(--border); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.q-text { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.4; }
+
+.ans-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border-radius: 8px; border: 2px solid #e0e6ee; background: #fff; cursor: pointer; transition: all .15s; user-select: none; text-align: left; }
+.ans-circle { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #c0ccd8; background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: border-color .15s, background .15s; }
+.ans-circle.square { border-radius: 5px; }
+.ans-circle::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; opacity: 0; transition: opacity .15s; }
+.ans-circle.square::after { border-radius: 2px; }
+.ans-label { font-size: 14.5px; font-weight: 600; color: var(--text); }
+.ans-btn.checked { border-color: var(--blue); box-shadow: 0 3px 12px rgba(26,86,160,.14); }
+.ans-btn.checked .ans-circle { border-color: var(--blue); background: var(--blue); }
+.ans-btn.checked .ans-circle::after { opacity: 1; }
+
+.free-answer { width: 100%; min-height: 90px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14.5px; color: var(--text); background: #fff; resize: vertical; outline: none; }
+.free-answer:focus { border-color: var(--blue); }
+
+.quiz-nav { display: flex; gap: 10px; }
+.quiz-nav .btn { flex: 1; }
+
+/* --- экран результата --- */
+.result-wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+.score-circle { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 28px 40px; background: #f4f7fb; border: 1.5px solid var(--border); border-radius: 14px; }
+.score-num { font-size: 44px; font-weight: 700; color: var(--blue); line-height: 1; }
+.score-sub { font-size: 13px; color: var(--muted); }
+
+.result-meta { width: 100%; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--text); background: #fafcff; border: 1.5px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+.result-meta .row { display: flex; justify-content: space-between; gap: 12px; }
+.result-meta .k { color: var(--muted); }
+
+.link-box { width: 100%; display: flex; gap: 8px; }
+.link-box input { flex: 1; }
+
+.breakdown { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.bd-item { border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; background: #fff; }
+.bd-item.correct { border-color: #bfe6cd; background: #f3fbf6; }
+.bd-item.incorrect { border-color: #f3c7c1; background: #fdf5f4; }
+.bd-item.manual { border-color: var(--border); background: #fafcff; }
+.bd-q { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.bd-a { font-size: 12.5px; color: var(--muted); }
+.bd-a b { color: var(--text); }
+.bd-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 10px; display: inline-block; margin-bottom: 6px; }
+.bd-tag.ok { background: #dff5e6; color: var(--green); }
+.bd-tag.no { background: #fbe3e1; color: #e74c3c; }
+.bd-tag.manual-tag { background: #eef2f7; color: var(--muted); }
+
+.restart-btn { width: 100%; max-width: 560px; }
+</style>
+</head>
+<body>
+
+<div class="site-header"><img src="header.jpg" alt="АвтоСкан"></div>
+
+<div class="main">
+
+  <!-- Стартовый экран -->
+  <div id="startScreen" class="form-block">
+    <div class="panel-title">Тестирование сотрудников</div>
+
+    <div class="field-label">Фамилия и Имя</div>
+    <input class="field-input" id="fullNameInput" type="text" placeholder="Иванов Иван" oninput="onStartFormChange()">
+
+    <div class="field-label">Должность</div>
+    <select class="field-input" id="positionSelect" onchange="onPositionChange()">
+      <option value="">Выберите должность</option>
+    </select>
+
+    <div class="field-label">Раздел тестирования</div>
+    <select class="field-input" id="sectionSelect" onchange="onStartFormChange()" disabled>
+      <option value="">Сначала выберите должность</option>
+    </select>
+
+    <div class="status-msg" id="startStatus"></div>
+    <button class="btn btn-green" id="startBtn" disabled onclick="startQuiz()">Начать тест</button>
+  </div>
+
+  <!-- Экран теста -->
+  <div id="quizScreen" style="display:none" class="quiz-wrap">
+    <div class="quiz-top">
+      <span id="quizProgress">Вопрос 1 из 1</span>
+      <span class="quiz-timer" id="quizTimer">20:00</span>
+    </div>
+    <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+
+    <div class="q-card">
+      <div class="q-text" id="qText"></div>
+      <div id="qAnswerArea"></div>
+    </div>
+
+    <div class="quiz-nav">
+      <button class="btn btn-ghost" id="prevBtn" onclick="goPrev()">Назад</button>
+      <button class="btn btn-blue" id="nextBtn" onclick="goNext()">Далее</button>
+    </div>
+  </div>
+
+  <!-- Экран результата -->
+  <div id="resultScreen" style="display:none" class="result-wrap">
+    <div class="score-circle">
+      <div class="score-num" id="scoreNum">0%</div>
+      <div class="score-sub" id="scoreSub">0 из 0 верно</div>
+    </div>
+
+    <div class="result-meta" id="resultMeta"></div>
+
+    <div class="field-label" style="align-self:flex-start;">Ссылка на этот результат</div>
+    <div class="link-box">
+      <input class="field-input" id="resultLink" type="text" readonly style="margin-bottom:0;">
+      <button class="btn btn-ghost" onclick="copyResultLink()">Скопировать</button>
+    </div>
+
+    <div class="breakdown" id="breakdown"></div>
+
+    <button class="btn btn-blue restart-btn" onclick="restart()">Пройти ещё раз</button>
+  </div>
+
+</div>
+
+<div class="site-footer"><img src="footer.jpg" alt="АвтоСкан"></div>
+
+<script>
+const OWNER = 'KeeGooRoomiE';
+const REPO = 'avtoscan-refactored-octo-spork';
+const BRANCH = 'main';
+const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
+
+const POSITIONS = [
+  { value: 'mop', label: 'МОП' },
+  { value: 'tp', label: 'ТП' },
+  { value: 'service', label: 'Сервис' },
+];
+
+const DEFAULT_QUESTION_COUNT = 20;
+const DEFAULT_TIMER_SECONDS = 20 * 60;
+
+let BANK = [];
+let selectedQuestions = [];
+let answers = [];
+let currentIndex = 0;
+let quizStartedAt = 0;
+let timerRemaining = DEFAULT_TIMER_SECONDS;
+let timerHandle = null;
+
+// ---------- инициализация ----------
+
+document.getElementById('positionSelect').innerHTML =
+  '<option value="">Выберите должность</option>' +
+  POSITIONS.map(p => `<option value="${p.value}">${p.label}</option>`).join('');
+
+(async function init() {
+  if (location.hash.startsWith('#d=')) {
+    try {
+      const token = fromBase64Url(location.hash.slice(3));
+      showResult(token, false);
+      return;
+    } catch (e) {
+      // битая ссылка — падаем обратно на стартовый экран
+    }
+  }
+  try {
+    const res = await fetch(RAW_DATA_URL);
+    const text = res.ok ? await res.text() : '';
+    BANK = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+  } catch (e) {
+    document.getElementById('startStatus').textContent = 'Не удалось загрузить банк вопросов: ' + e.message;
+  }
+})();
+
+// ---------- base64url для самодостаточной ссылки ----------
+
+function toBase64Url(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  let binary = '';
+  bytes.forEach(b => { binary += String.fromCharCode(b); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function fromBase64Url(str) {
+  let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+// ---------- стартовый экран ----------
+
+function onPositionChange() {
+  const position = document.getElementById('positionSelect').value;
+  const sectionSelect = document.getElementById('sectionSelect');
+  if (!position) {
+    sectionSelect.innerHTML = '<option value="">Сначала выберите должность</option>';
+    sectionSelect.disabled = true;
+    onStartFormChange();
+    return;
+  }
+  const sections = Array.from(new Set(
+    BANK.filter(q => (q.position_tags || []).includes(position)).map(q => q.section)
+  )).sort((a, b) => a.localeCompare(b, 'ru'));
+
+  sectionSelect.disabled = false;
+  sectionSelect.innerHTML = sections.length
+    ? '<option value="">Выберите раздел</option>' + sections.map(s => `<option value="${s}">${s}</option>`).join('')
+    : '<option value="">Нет доступных разделов</option>';
+  onStartFormChange();
+}
+
+function onStartFormChange() {
+  const name = document.getElementById('fullNameInput').value.trim();
+  const position = document.getElementById('positionSelect').value;
+  const section = document.getElementById('sectionSelect').value;
+  document.getElementById('startBtn').disabled = !(name && position && section);
+}
+
+function startQuiz() {
+  const position = document.getElementById('positionSelect').value;
+  const section = document.getElementById('sectionSelect').value;
+
+  const pool = BANK.filter(q => q.section === section && (q.position_tags || []).includes(position));
+  if (pool.length === 0) {
+    document.getElementById('startStatus').textContent = 'В этом разделе пока нет вопросов для выбранной должности';
+    return;
+  }
+
+  selectedQuestions = shuffle(pool.slice()).slice(0, DEFAULT_QUESTION_COUNT);
+  answers = selectedQuestions.map(() => ({ given: [] }));
+  currentIndex = 0;
+  quizStartedAt = Date.now();
+  timerRemaining = DEFAULT_TIMER_SECONDS;
+
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'flex';
+  renderQuestion();
+  startTimer();
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ---------- экран теста ----------
+
+function startTimer() {
+  updateTimerDisplay();
+  timerHandle = setInterval(() => {
+    timerRemaining--;
+    updateTimerDisplay();
+    if (timerRemaining <= 0) {
+      clearInterval(timerHandle);
+      finishQuiz();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.max(0, Math.floor(timerRemaining / 60));
+  const s = Math.max(0, timerRemaining % 60);
+  const el = document.getElementById('quizTimer');
+  el.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  el.classList.toggle('warn', timerRemaining <= 60);
+}
+
+function renderQuestion() {
+  const q = selectedQuestions[currentIndex];
+  document.getElementById('quizProgress').textContent = `Вопрос ${currentIndex + 1} из ${selectedQuestions.length}`;
+  document.getElementById('progressFill').style.width = ((currentIndex) / selectedQuestions.length * 100) + '%';
+  document.getElementById('qText').textContent = q.text;
+
+  const area = document.getElementById('qAnswerArea');
+  area.innerHTML = '';
+  const given = answers[currentIndex].given;
+
+  if (q.type === 'free') {
+    const ta = document.createElement('textarea');
+    ta.className = 'free-answer';
+    ta.placeholder = 'Введите ответ…';
+    ta.value = given[0] || '';
+    ta.oninput = () => { answers[currentIndex].given = [ta.value]; };
+    area.appendChild(ta);
+  } else {
+    (q.options || []).forEach((opt, oi) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ans-btn' + (given.includes(oi) ? ' checked' : '');
+      btn.innerHTML = `<span class="ans-circle${q.type === 'multiple' ? ' square' : ''}"></span><span class="ans-label"></span>`;
+      btn.querySelector('.ans-label').textContent = opt;
+      btn.onclick = () => {
+        if (q.type === 'single') {
+          answers[currentIndex].given = [oi];
+        } else {
+          const g = answers[currentIndex].given;
+          const pos = g.indexOf(oi);
+          if (pos === -1) g.push(oi); else g.splice(pos, 1);
+        }
+        renderQuestion();
+      };
+      area.appendChild(btn);
+    });
+  }
+
+  document.getElementById('prevBtn').disabled = currentIndex === 0;
+  document.getElementById('nextBtn').textContent = currentIndex === selectedQuestions.length - 1 ? 'Завершить тест' : 'Далее';
+}
+
+function goPrev() {
+  if (currentIndex === 0) return;
+  currentIndex--;
+  renderQuestion();
+}
+
+function goNext() {
+  if (currentIndex === selectedQuestions.length - 1) {
+    finishQuiz();
+    return;
+  }
+  currentIndex++;
+  renderQuestion();
+}
+
+function finishQuiz() {
+  if (timerHandle) clearInterval(timerHandle);
+
+  const durationSeconds = Math.round((Date.now() - quizStartedAt) / 1000);
+  const detailedAnswers = selectedQuestions.map((q, i) => {
+    const given = answers[i].given;
+    if (q.type === 'free') {
+      return { question_id: q.id, text: q.text, type: q.type, given, correct: null, is_correct: null };
+    }
+    const correct = q.correct || [];
+    const isCorrect = given.length === correct.length && given.slice().sort().every((v, idx) => v === correct.slice().sort()[idx]);
+    return { question_id: q.id, text: q.text, options: q.options, type: q.type, given, correct, is_correct: isCorrect };
+  });
+
+  const scorable = detailedAnswers.filter(a => a.type !== 'free');
+  const correctCount = scorable.filter(a => a.is_correct).length;
+  const totalCount = scorable.length;
+  const scorePercent = totalCount ? Math.round((correctCount / totalCount) * 1000) / 10 : 0;
+
+  const token = {
+    v: 1,
+    result_hash: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
+    timestamp: new Date().toISOString(),
+    full_name: document.getElementById('fullNameInput').value.trim(),
+    position: document.getElementById('positionSelect').value,
+    section: document.getElementById('sectionSelect').value,
+    duration_seconds: durationSeconds,
+    answers: detailedAnswers,
+    score_percent: scorePercent,
+    correct_count: correctCount,
+    total_count: totalCount,
+  };
+
+  location.hash = 'd=' + toBase64Url(token);
+  document.getElementById('quizScreen').style.display = 'none';
+  showResult(token, true);
+}
+
+// ---------- экран результата ----------
+
+const POSITION_LABELS = Object.fromEntries(POSITIONS.map(p => [p.value, p.label]));
+
+function showResult(token, alreadyOnPage) {
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'none';
+  document.getElementById('resultScreen').style.display = 'flex';
+
+  document.getElementById('scoreNum').textContent = token.score_percent + '%';
+  document.getElementById('scoreSub').textContent = `${token.correct_count} из ${token.total_count} верно`;
+
+  const date = new Date(token.timestamp);
+  const dateStr = isNaN(date) ? token.timestamp : date.toLocaleString('ru-RU');
+  const minutes = Math.floor(token.duration_seconds / 60);
+  const seconds = token.duration_seconds % 60;
+
+  document.getElementById('resultMeta').innerHTML = `
+    <div class="row"><span class="k">ФИО</span><b>${escapeHtml(token.full_name)}</b></div>
+    <div class="row"><span class="k">Должность</span><b>${escapeHtml(POSITION_LABELS[token.position] || token.position)}</b></div>
+    <div class="row"><span class="k">Раздел</span><b>${escapeHtml(token.section)}</b></div>
+    <div class="row"><span class="k">Дата</span><b>${dateStr}</b></div>
+    <div class="row"><span class="k">Длительность</span><b>${minutes} мин ${seconds} сек</b></div>
+    <div class="row"><span class="k">Хэш результата</span><b>${escapeHtml(token.result_hash)}</b></div>
+  `;
+
+  document.getElementById('resultLink').value = location.href;
+
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = '';
+  token.answers.forEach((a, i) => {
+    const div = document.createElement('div');
+    let cls = 'manual', tag = '<span class="bd-tag manual-tag">На ручную проверку</span>';
+    if (a.type !== 'free') {
+      cls = a.is_correct ? 'correct' : 'incorrect';
+      tag = a.is_correct ? '<span class="bd-tag ok">Верно</span>' : '<span class="bd-tag no">Неверно</span>';
+    }
+    div.className = 'bd-item ' + cls;
+    let answerHtml;
+    if (a.type === 'free') {
+      answerHtml = `<div class="bd-a">Ответ: <b>${escapeHtml(a.given[0] || '—')}</b></div>`;
+    } else {
+      const givenText = a.given.length ? a.given.map(gi => a.options[gi]).join(', ') : '—';
+      const correctText = a.correct.map(ci => a.options[ci]).join(', ');
+      answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(givenText)}</b></div>` +
+        (a.is_correct ? '' : `<div class="bd-a">Правильный ответ: <b>${escapeHtml(correctText)}</b></div>`);
+    }
+    div.innerHTML = `${tag}<div class="bd-q">${i + 1}. ${escapeHtml(a.text)}</div>${answerHtml}`;
+    bd.appendChild(div);
+  });
+}
+
+function copyResultLink() {
+  const input = document.getElementById('resultLink');
+  input.select();
+  navigator.clipboard?.writeText(input.value).catch(() => {});
+}
+
+function restart() {
+  location.hash = '';
+  document.getElementById('resultScreen').style.display = 'none';
+  document.getElementById('startScreen').style.display = 'flex';
+  document.getElementById('fullNameInput').value = '';
+  document.getElementById('positionSelect').value = '';
+  onPositionChange();
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+</script>
+</body>
+</html>

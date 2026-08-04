@@ -1,0 +1,19 @@
+[
+  {
+    "name": "Тестовый Руководитель (МОП)",
+    "email": "test-manager-mop@example.com",
+    "sections": ["Название_Раздела"],
+    "position_tags": ["mop"]
+  },
+  {
+    "name": "Тестовый Руководитель (ТП/Сервис)",
+    "email": "test-manager-tp-service@example.com",
+    "sections": ["Название_Раздела"],
+    "position_tags": ["tp", "service"]
+  },
+  {
+    "name": "Тестовый Руководитель (общий)",
+    "email": "test-manager-general@example.com",
+    "sections": ["Название_Раздела"]
+  }
+]
