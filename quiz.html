@@ -113,6 +113,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 .link-box { width: 100%; display: flex; gap: 8px; }
 .link-box input { flex: 1; }
+.copy-btn { flex-shrink: 0; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.copy-btn svg { display: block; }
+.copy-btn.copied { color: var(--green); border-color: #bfe6cd; background: #f3fbf6; }
 
 .breakdown { width: 100%; display: flex; flex-direction: column; gap: 10px; }
 .bd-item { border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; background: #fff; }
@@ -193,7 +196,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
     <div class="field-label" style="align-self:flex-start;">Ссылка на этот результат</div>
     <div class="link-box">
       <input class="field-input" id="resultLink" type="text" readonly style="margin-bottom:0;">
-      <button class="btn btn-ghost" onclick="copyResultLink()">Скопировать</button>
+      <button class="btn btn-ghost copy-btn" id="copyBtn" title="Скопировать ссылку" onclick="copyResultLink()">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/></svg>
+      </button>
     </div>
 
     <div class="breakdown" id="breakdown"></div>
@@ -493,7 +498,6 @@ function showResult(token, alreadyOnPage) {
     <div class="row"><span class="k">Раздел</span><b>${escapeHtml(token.section)}</b></div>
     <div class="row"><span class="k">Дата</span><b>${dateStr}</b></div>
     <div class="row"><span class="k">Длительность</span><b>${minutes} мин ${seconds} сек</b></div>
-    <div class="row"><span class="k">Хэш результата</span><b>${escapeHtml(token.result_hash)}</b></div>
   `;
 
   document.getElementById('resultLink').value = location.href;
@@ -513,9 +517,7 @@ function showResult(token, alreadyOnPage) {
       answerHtml = `<div class="bd-a">Ответ: <b>${escapeHtml(a.given[0] || '—')}</b></div>`;
     } else {
       const givenText = a.given.length ? a.given.map(gi => a.options[gi]).join(', ') : '—';
-      const correctText = a.correct.map(ci => a.options[ci]).join(', ');
-      answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(givenText)}</b></div>` +
-        (a.is_correct ? '' : `<div class="bd-a">Правильный ответ: <b>${escapeHtml(correctText)}</b></div>`);
+      answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(givenText)}</b></div>`;
     }
     div.innerHTML = `${tag}<div class="bd-q">${i + 1}. ${escapeHtml(a.text)}</div>${answerHtml}`;
     bd.appendChild(div);
@@ -524,8 +526,17 @@ function showResult(token, alreadyOnPage) {
 
 function copyResultLink() {
   const input = document.getElementById('resultLink');
+  const btn = document.getElementById('copyBtn');
   input.select();
   navigator.clipboard?.writeText(input.value).catch(() => {});
+
+  const original = btn.innerHTML;
+  btn.innerHTML = '<svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.innerHTML = original;
+    btn.classList.remove('copied');
+  }, 1200);
 }
 
 function restart() {
