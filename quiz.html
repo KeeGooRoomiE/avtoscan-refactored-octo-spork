@@ -217,9 +217,9 @@ const BRANCH = 'main';
 const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
 
 const POSITIONS = [
-  { value: 'mop', label: 'МОП' },
-  { value: 'tp', label: 'ТП' },
-  { value: 'service', label: 'Сервис' },
+  { value: 'mop', label: 'Отдел продаж' },
+  { value: 'tp', label: 'Техническая поддержка' },
+  { value: 'service', label: 'Отдел сервиса' },
 ];
 const POSITION_LABELS = Object.fromEntries(POSITIONS.map(p => [p.value, p.label]));
 
