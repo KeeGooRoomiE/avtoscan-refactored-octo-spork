@@ -130,6 +130,12 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .bd-tag.no { background: #fbe3e1; color: #e74c3c; }
 .bd-tag.manual-tag { background: #eef2f7; color: var(--muted); }
 
+.verdict-row { display: flex; gap: 8px; margin-top: 8px; }
+.verdict-btn { flex: 1; padding: 7px; border-radius: 7px; border: 1.5px solid var(--border); background: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--muted); transition: all .15s; }
+.verdict-btn:hover { background: #f4f7fb; }
+.verdict-btn.ok.active { background: #dff5e6; border-color: #bfe6cd; color: var(--green); }
+.verdict-btn.no.active { background: #fbe3e1; border-color: #f3c7c1; color: #e74c3c; }
+
 .restart-btn { width: 100%; max-width: 560px; }
 </style>
 </head>
@@ -203,6 +209,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
     <div class="breakdown" id="breakdown"></div>
 
+    <button class="btn btn-ghost restart-btn" id="recalcBtn" style="display:none" onclick="recalcAndRelink()">Пересчитать с учётом проверки и обновить ссылку</button>
+    <div class="status-msg" id="recalcStatus"></div>
+
     <button class="btn btn-blue restart-btn" onclick="restart()">Пройти ещё раз</button>
   </div>
 
@@ -214,6 +223,7 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 const OWNER = 'KeeGooRoomiE';
 const REPO = 'avtoscan-refactored-octo-spork';
 const BRANCH = 'main';
+const RAW_TESTS_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/tests.jsonl?t=` + Date.now();
 const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
 
 const POSITIONS = [
@@ -239,12 +249,14 @@ window.api = {
 };
 
 let BANK = [];
+let TESTS = [];
 let selectedQuestions = [];
 let answers = [];
 let currentIndex = 0;
 let quizStartedAt = 0;
 let timerRemaining = DEFAULT_TIMER_SECONDS;
 let timerHandle = null;
+let currentToken = null;
 
 let cleverBoy = 'https://raw.githubusercontent.com/KeeGooRoomiE/avtoscan-refactored-octo-spork/main/data/questions.jsonl'; 
 
@@ -270,9 +282,11 @@ document.getElementById('positionSelect').innerHTML =
     }
   }
   try {
-    const res = await fetch(RAW_DATA_URL);
-    const text = res.ok ? await res.text() : '';
-    BANK = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    const [testsRes, qRes] = await Promise.all([fetch(RAW_TESTS_URL), fetch(RAW_DATA_URL)]);
+    const testsText = testsRes.ok ? await testsRes.text() : '';
+    const qText = qRes.ok ? await qRes.text() : '';
+    TESTS = testsText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    BANK = qText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
   } catch (e) {
     document.getElementById('startStatus').textContent = 'Не удалось загрузить банк вопросов: ' + e.message;
   }
@@ -306,13 +320,11 @@ function onPositionChange() {
     onStartFormChange();
     return;
   }
-  const sections = Array.from(new Set(
-    BANK.filter(q => (q.position_tags || []).includes(position)).map(q => q.section)
-  )).sort((a, b) => a.localeCompare(b, 'ru'));
+  const tests = TESTS.filter(t => t.position === position).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
   sectionSelect.disabled = false;
-  sectionSelect.innerHTML = sections.length
-    ? '<option value="">Выберите раздел</option>' + sections.map(s => `<option value="${s}">${s}</option>`).join('')
+  sectionSelect.innerHTML = tests.length
+    ? '<option value="">Выберите раздел</option>' + tests.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')
     : '<option value="">Нет доступных разделов</option>';
   onStartFormChange();
 }
@@ -331,10 +343,9 @@ function onStartFormChange() {
 //Ты же сюда попадешь из answer = true или answer: 1 или current_answer: 1, ведь так?
 
 function startQuiz() {
-  const position = document.getElementById('positionSelect').value;
-  const section = document.getElementById('sectionSelect').value;
+  const testId = document.getElementById('sectionSelect').value;
 
-  const pool = BANK.filter(q => q.section === section && (q.position_tags || []).includes(position));
+  const pool = BANK.filter(q => q.test_id === testId);
   if (pool.length === 0) {
     document.getElementById('startStatus').textContent = 'В этом разделе пока нет вопросов для выбранной должности';
     return;
@@ -446,7 +457,7 @@ function finishQuiz() {
   const detailedAnswers = selectedQuestions.map((q, i) => {
     const given = answers[i].given;
     if (q.type === 'free') {
-      return { question_id: q.id, text: q.text, type: q.type, given, correct: null, is_correct: null };
+      return { question_id: q.id, text: q.text, type: q.type, given, correct: null, is_correct: null, manager_verdict: null };
     }
     const correct = q.correct || [];
     const isCorrect = given.length === correct.length && given.slice().sort().every((v, idx) => v === correct.slice().sort()[idx]);
@@ -458,13 +469,17 @@ function finishQuiz() {
   const totalCount = scorable.length;
   const scorePercent = totalCount ? Math.round((correctCount / totalCount) * 1000) / 10 : 0;
 
+  const testId = document.getElementById('sectionSelect').value;
+  const test = TESTS.find(t => t.id === testId);
+
   const token = {
     v: 1,
     result_hash: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)),
     timestamp: new Date().toISOString(),
     full_name: document.getElementById('fullNameInput').value.trim(),
     position: document.getElementById('positionSelect').value,
-    section: document.getElementById('sectionSelect').value,
+    test_id: testId,
+    section: test ? test.name : testId,
     duration_seconds: durationSeconds,
     answers: detailedAnswers,
     score_percent: scorePercent,
@@ -480,6 +495,8 @@ function finishQuiz() {
 // ---------- экран результата ----------
 
 function showResult(token, alreadyOnPage) {
+  currentToken = token;
+
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'none';
   document.getElementById('resultScreen').style.display = 'flex';
@@ -506,15 +523,23 @@ function showResult(token, alreadyOnPage) {
   bd.innerHTML = '';
   token.answers.forEach((a, i) => {
     const div = document.createElement('div');
-    let cls = 'manual', tag = '<span class="bd-tag manual-tag">На ручную проверку</span>';
-    if (a.type !== 'free') {
+    let cls, tag;
+    if (a.type === 'free') {
+      if (a.manager_verdict === true) { cls = 'correct'; tag = '<span class="bd-tag ok">Верно (оценено)</span>'; }
+      else if (a.manager_verdict === false) { cls = 'incorrect'; tag = '<span class="bd-tag no">Неверно (оценено)</span>'; }
+      else { cls = 'manual'; tag = '<span class="bd-tag manual-tag">На ручную проверку</span>'; }
+    } else {
       cls = a.is_correct ? 'correct' : 'incorrect';
       tag = a.is_correct ? '<span class="bd-tag ok">Верно</span>' : '<span class="bd-tag no">Неверно</span>';
     }
     div.className = 'bd-item ' + cls;
     let answerHtml;
     if (a.type === 'free') {
-      answerHtml = `<div class="bd-a">Ответ: <b>${escapeHtml(a.given[0] || '—')}</b></div>`;
+      answerHtml = `<div class="bd-a">Ответ: <b>${escapeHtml(a.given[0] || '—')}</b></div>
+        <div class="verdict-row">
+          <button class="verdict-btn ok${a.manager_verdict === true ? ' active' : ''}" onclick="setVerdict(${i}, true)">Верно</button>
+          <button class="verdict-btn no${a.manager_verdict === false ? ' active' : ''}" onclick="setVerdict(${i}, false)">Неверно</button>
+        </div>`;
     } else {
       const givenText = a.given.length ? a.given.map(gi => a.options[gi]).join(', ') : '—';
       answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(givenText)}</b></div>`;
@@ -522,6 +547,45 @@ function showResult(token, alreadyOnPage) {
     div.innerHTML = `${tag}<div class="bd-q">${i + 1}. ${escapeHtml(a.text)}</div>${answerHtml}`;
     bd.appendChild(div);
   });
+
+  const hasFree = token.answers.some(a => a.type === 'free');
+  const recalcBtn = document.getElementById('recalcBtn');
+  recalcBtn.style.display = hasFree ? 'block' : 'none';
+}
+
+function setVerdict(i, val) {
+  currentToken.answers[i].manager_verdict = currentToken.answers[i].manager_verdict === val ? null : val;
+  showResult(currentToken, true);
+}
+
+function recomputeScore(token) {
+  let correct = 0, total = 0;
+  token.answers.forEach(a => {
+    if (a.type === 'free') {
+      if (a.manager_verdict === true) { correct++; total++; }
+      else if (a.manager_verdict === false) { total++; }
+    } else {
+      total++;
+      if (a.is_correct) correct++;
+    }
+  });
+  token.correct_count = correct;
+  token.total_count = total;
+  token.score_percent = total ? Math.round((correct / total) * 1000) / 10 : 0;
+}
+
+function recalcAndRelink() {
+  recomputeScore(currentToken);
+  location.hash = 'd=' + toBase64Url(currentToken);
+  showResult(currentToken, true);
+  setStatus('recalcStatus', 'Ссылка обновлена — скопируйте новую и отправьте сотруднику/сохраните.', 'ok');
+}
+
+function setStatus(elId, text, cls) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'status-msg' + (cls ? ' ' + cls : '');
 }
 
 function copyResultLink() {

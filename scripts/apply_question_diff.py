@@ -1,32 +1,46 @@
 #!/usr/bin/env python3
-"""Применяет diff (add/edit/delete) из редактора вопросов к data/questions.jsonl."""
+"""Применяет diff (тесты + вопросы) из редактора к data/tests.jsonl и data/questions.jsonl."""
 import json
 import os
 
-DATA_PATH = "data/questions.jsonl"
-REQUIRED_COMMON = {"section", "position_tags", "type", "text"}
+TESTS_PATH = "data/tests.jsonl"
+QUESTIONS_PATH = "data/questions.jsonl"
+
+QUESTION_REQUIRED = {"test_id", "type", "text"}
+TEST_REQUIRED = {"position", "name"}
+VALID_POSITIONS = {"mop", "tp", "service"}
 
 
-def load_bank(path):
-    questions = []
+def load_jsonl(path):
+    items = []
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    questions.append(json.loads(line))
-    return questions
+                    items.append(json.loads(line))
+    return items
 
 
-def save_bank(path, questions):
+def save_jsonl(path, items):
     with open(path, "w", encoding="utf-8") as f:
-        for q in questions:
-            f.write(json.dumps(q, ensure_ascii=False))
+        for item in items:
+            f.write(json.dumps(item, ensure_ascii=False))
             f.write("\n")
 
 
+def validate_test(t):
+    missing = TEST_REQUIRED - t.keys()
+    if missing:
+        raise ValueError(f"Тест {t.get('id')}: не хватает полей {sorted(missing)}")
+    if t["position"] not in VALID_POSITIONS:
+        raise ValueError(f"Тест {t.get('id')}: неизвестная должность '{t['position']}'")
+    if not t["name"].strip():
+        raise ValueError(f"Тест {t.get('id')}: пустое название")
+
+
 def validate_question(q):
-    missing = REQUIRED_COMMON - q.keys()
+    missing = QUESTION_REQUIRED - q.keys()
     if missing:
         raise ValueError(f"Вопрос {q.get('id')}: не хватает полей {sorted(missing)}")
 
@@ -50,48 +64,65 @@ def validate_question(q):
         raise ValueError(f"Вопрос {q.get('id')}: неизвестный type '{qtype}'")
 
 
-def main():
-    ops = json.loads(os.environ["DIFF_JSON"])
-    if not isinstance(ops, list):
-        raise ValueError("diff должен быть JSON-массивом операций")
-
-    questions = load_bank(DATA_PATH)
-    by_id = {q["id"]: i for i, q in enumerate(questions)}
+def apply_ops(items, ops, item_key, validate_fn, entity_name):
+    by_id = {item["id"]: i for i, item in enumerate(items)}
 
     for op in ops:
         action = op.get("op")
 
         if action == "add":
-            q = op["question"]
-            if not q.get("id"):
-                raise ValueError("add: у вопроса должен быть id (генерируется в редакторе)")
-            if q["id"] in by_id:
-                raise ValueError(f"add: id {q['id']} уже существует в банке")
-            validate_question(q)
-            questions.append(q)
-            by_id[q["id"]] = len(questions) - 1
+            item = op[item_key]
+            if not item.get("id"):
+                raise ValueError(f"add {entity_name}: у объекта должен быть id (генерируется в редакторе)")
+            if item["id"] in by_id:
+                raise ValueError(f"add {entity_name}: id {item['id']} уже существует")
+            validate_fn(item)
+            items.append(item)
+            by_id[item["id"]] = len(items) - 1
 
         elif action == "edit":
-            qid = op["id"]
-            if qid not in by_id:
-                raise ValueError(f"edit: id {qid} не найден в банке")
-            q = dict(op["question"])
-            q["id"] = qid
-            validate_question(q)
-            questions[by_id[qid]] = q
+            oid = op["id"]
+            if oid not in by_id:
+                raise ValueError(f"edit {entity_name}: id {oid} не найден")
+            item = dict(op[item_key])
+            item["id"] = oid
+            validate_fn(item)
+            items[by_id[oid]] = item
 
         elif action == "delete":
-            qid = op["id"]
-            if qid not in by_id:
-                raise ValueError(f"delete: id {qid} не найден в банке")
-            questions[by_id[qid]] = None
+            oid = op["id"]
+            if oid not in by_id:
+                raise ValueError(f"delete {entity_name}: id {oid} не найден")
+            items[by_id[oid]] = None
 
         else:
-            raise ValueError(f"Неизвестная операция: {action!r}")
+            raise ValueError(f"Неизвестная операция для {entity_name}: {action!r}")
 
-    questions = [q for q in questions if q is not None]
-    save_bank(DATA_PATH, questions)
-    print(f"OK, вопросов в банке: {len(questions)}")
+    return [item for item in items if item is not None]
+
+
+def main():
+    diff = json.loads(os.environ["DIFF_JSON"])
+    if not isinstance(diff, dict):
+        raise ValueError("diff должен быть JSON-объектом {tests: [...], questions: [...]}")
+
+    tests = load_jsonl(TESTS_PATH)
+    tests = apply_ops(tests, diff.get("tests", []), "test", validate_test, "test")
+    save_jsonl(TESTS_PATH, tests)
+
+    test_ids = {t["id"] for t in tests}
+
+    questions = load_jsonl(QUESTIONS_PATH)
+
+    def validate_question_with_test_ref(q):
+        validate_question(q)
+        if q["test_id"] not in test_ids:
+            raise ValueError(f"Вопрос {q.get('id')}: test_id '{q['test_id']}' не существует")
+
+    questions = apply_ops(questions, diff.get("questions", []), "question", validate_question_with_test_ref, "question")
+    save_jsonl(QUESTIONS_PATH, questions)
+
+    print(f"OK, тестов: {len(tests)}, вопросов: {len(questions)}")
 
 
 if __name__ == "__main__":

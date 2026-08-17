@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       diff:
-        description: 'JSON-массив операций add/edit/delete над банком вопросов'
+        description: 'JSON {tests: [...], questions: [...]} с операциями add/edit/delete'
         required: true
         type: string
 
@@ -26,7 +26,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/questions.jsonl
+          git add data/questions.jsonl data/tests.jsonl
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0

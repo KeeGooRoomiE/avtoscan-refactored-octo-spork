@@ -42,7 +42,7 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 .hint { font-size: 12px; color: var(--muted); max-width: 640px; }
 
-/* --- список карточек-вопросов --- */
+/* --- список карточек (тестов или вопросов) --- */
 .qlist { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 640px; }
 
 .add-card-btn {
@@ -50,20 +50,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
   font-size: 30px; font-weight: 700; line-height: 1; cursor: pointer; padding: 22px;
   box-shadow: 0 4px 16px rgba(26,86,160,.20); transition: background .18s, transform .1s;
 }
+.add-card-btn.labeled { font-size: 16px; padding: 16px 22px; }
 .add-card-btn:hover { background: #154988; }
 .add-card-btn:active { transform: scale(.99); }
-
-.q-card { background: #fff; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
-.q-card.deleted { opacity: .5; }
-
-.q-id { font-size: 10px; color: var(--muted); word-break: break-all; }
-
-.q-title-row { display: flex; align-items: flex-start; gap: 8px; }
-.q-title-input {
-  flex: 1; font-size: 16px; font-weight: 700; font-family: inherit; color: var(--text);
-  border: none; background: transparent; outline: none; resize: none; overflow: hidden; padding: 2px 0;
-}
-.q-title-input::placeholder { color: #b0bfcc; font-weight: 400; }
 
 .icon-btn { border: none; background: none; cursor: pointer; padding: 3px; color: var(--muted); flex-shrink: 0; line-height: 1; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; transition: color .15s, background .15s; }
 .icon-btn svg { display: block; }
@@ -71,17 +60,38 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .icon-btn.delete:hover { color: #e74c3c; background: #fdf2f2; }
 .icon-btn.done { color: var(--green); }
 
-.q-meta-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-.q-section-row { display: flex; align-items: center; gap: 4px; width: 50%; }
-.q-section-select { flex: 1; min-width: 0; border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 6px; border-radius: 6px; }
-.q-section-new-input { flex: 1; min-width: 0; border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 6px; border-radius: 6px; }
-.q-section-new-input::placeholder { color: #b0bfcc; }
-.q-positions-summary { flex: 1; }
+.q-id { font-size: 10px; color: var(--muted); word-break: break-all; }
+.q-err { font-size: 11px; color: #e74c3c; min-height: 14px; }
+
+/* --- список тестов --- */
+.test-card { background: #fff; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.test-card.deleted { opacity: .5; }
+.test-title-row { display: flex; align-items: flex-start; gap: 6px; }
+.test-name-input { flex: 1; font-size: 16px; font-weight: 700; font-family: inherit; color: var(--text); border: none; background: transparent; outline: none; padding: 2px 0; }
+.test-name-input::placeholder { color: #b0bfcc; font-weight: 400; }
+.test-meta-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.test-position-select { border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 8px; border-radius: 6px; }
+.test-count { flex: 1; }
+.test-open-btn { align-self: stretch; text-align: center; padding: 9px; border-radius: 8px; border: 1.5px solid var(--border); background: #f4f7fb; color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; }
+.test-open-btn:hover { background: #eef3fa; }
+
+.back-link { align-self: flex-start; border: none; background: none; color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 0; }
+.back-link:hover { text-decoration: underline; }
+.active-test-heading { font-size: 17px; font-weight: 700; color: var(--text); }
+.active-test-sub { font-size: 12px; color: var(--muted); margin-top: -14px; }
+
+/* --- карточки вопросов --- */
+.q-card { background: #fff; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.q-card.deleted { opacity: .5; }
+
+.q-title-row { display: flex; align-items: flex-start; gap: 4px; }
+.q-title-input {
+  flex: 1; font-size: 16px; font-weight: 700; font-family: inherit; color: var(--text);
+  border: none; background: transparent; outline: none; resize: none; overflow: hidden; padding: 2px 0;
+}
+.q-title-input::placeholder { color: #b0bfcc; font-weight: 400; }
 
 .q-edit { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; margin-top: 4px; border-top: 1px dashed var(--border); }
-
-.q-positions-edit { display: flex; gap: 16px; font-size: 12.5px; flex-wrap: wrap; }
-.q-positions-edit label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
 
 .q-type-select { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); align-self: flex-start; }
 
@@ -97,8 +107,6 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .q-add-option:hover { text-decoration: underline; }
 
 .q-free-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); }
-
-.q-err { font-size: 11px; color: #e74c3c; min-height: 14px; }
 </style>
 </head>
 <body>
@@ -151,6 +159,7 @@ const REPO = 'avtoscan-refactored-octo-spork';
 const BRANCH = 'main';
 const WORKFLOW_FILE = 'edit-questions.yml';
 const PASSWORD_HASH_HEX = 'f956298be4244f631c2b9e4125a6c0447b85898319626d6d2000c900fabab27e';
+const RAW_TESTS_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/tests.jsonl?t=` + Date.now();
 const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
 
 const POSITIONS = [
@@ -170,8 +179,11 @@ const ICON_PENCIL = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"
 const ICON_CHECK = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
 const ICON_X = '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l10 10M15 5L5 15"/></svg>';
 
-let originalById = new Map();  // id -> plain question snapshot (как загружено из репозитория)
-let working = [];              // рабочие вопросы: канонические поля + _isNew / _deleted / _expanded
+let originalById = new Map();       // id -> plain question snapshot (как загружено из репозитория)
+let working = [];                   // рабочие вопросы: канонические поля + _isNew / _deleted / _expanded
+let originalTestsById = new Map();  // id -> plain test snapshot
+let workingTests = [];              // рабочие тесты: {id, position, name} + _isNew / _deleted
+let activeTestId = null;            // null = список тестов, иначе — редактируем вопросы этого теста
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -235,37 +247,188 @@ function setStatus(elId, text, cls) {
 }
 
 async function loadBank() {
-  setStatus('mainStatus', 'Загружаю банк вопросов…');
+  setStatus('mainStatus', 'Загружаю банк…');
   try {
-    const res = await fetch(RAW_DATA_URL + '&r=' + Math.random());
-    if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
-    const text = res.ok ? await res.text() : '';
-    const questions = text.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    const [testsRes, qRes] = await Promise.all([
+      fetch(RAW_TESTS_URL + '&r=' + Math.random()),
+      fetch(RAW_DATA_URL + '&r=' + Math.random()),
+    ]);
+    const testsText = testsRes.ok ? await testsRes.text() : '';
+    const qText = qRes.ok ? await qRes.text() : '';
+
+    const tests = testsText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    const questions = qText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+
+    originalTestsById = new Map(tests.map(t => [t.id, JSON.parse(JSON.stringify(t))]));
+    workingTests = tests.map(t => Object.assign(JSON.parse(JSON.stringify(t)), { _isNew: false, _deleted: false }));
+
     originalById = new Map(questions.map(q => [q.id, JSON.parse(JSON.stringify(q))]));
     working = questions.map(q => Object.assign(JSON.parse(JSON.stringify(q)), { _isNew: false, _deleted: false, _expanded: false }));
-    renderList();
-    setStatus('mainStatus', `Загружено вопросов: ${questions.length}`, 'ok');
+
+    activeTestId = null;
+    render();
+    setStatus('mainStatus', `Загружено тестов: ${tests.length}, вопросов: ${questions.length}`, 'ok');
   } catch (e) {
     setStatus('mainStatus', 'Не удалось загрузить банк: ' + e.message, 'error');
   }
 }
 
 function slugify(s) {
-  return (s || 'section').toLowerCase()
+  return (s || 'test').toLowerCase()
     .replace(/[^a-z0-9а-яё]+/gi, '-')
-    .replace(/^-+|-+$/g, '') || 'section';
+    .replace(/^-+|-+$/g, '') || 'test';
 }
-function genId(section) {
-  const rand = Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b => b.toString(16).padStart(2, '0')).join('');
-  return `${slugify(section)}-${rand}`;
+function randHex() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function genId(name) {
+  return `${slugify(name)}-${randHex()}`;
+}
+function genTestId() {
+  return `test-${randHex()}`;
 }
 
+function mkEl(tag, attrs) {
+  const e = document.createElement(tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v));
+  return e;
+}
+
+// ---------- маршрутизация: список тестов <-> вопросы конкретного теста ----------
+
+function render() {
+  if (activeTestId === null) renderTestList();
+  else renderQuestionsForActiveTest();
+}
+
+// ---------- список тестов ----------
+
+function addTest() {
+  workingTests.unshift({ id: genTestId(), position: '', name: '', _isNew: true, _deleted: false });
+  render();
+}
+
+function toggleTestDeleted(idx) {
+  const t = workingTests[idx];
+  if (t._isNew) {
+    const tid = t.id;
+    workingTests.splice(idx, 1);
+    working = working.filter(q => q.test_id !== tid);
+    if (activeTestId === tid) activeTestId = null;
+    render();
+    return;
+  }
+  const newDeleted = !t._deleted;
+  if (newDeleted) {
+    const count = working.filter(q => q.test_id === t.id && !q._deleted).length;
+    if (!confirm(`Удалить тест «${t.name || t.id}»${count ? ' и все вопросы в нём (' + count + ')' : ''}? Правки применятся после публикации.`)) return;
+  }
+  t._deleted = newDeleted;
+  working.forEach(q => { if (q.test_id === t.id && !q._isNew) q._deleted = newDeleted; });
+  if (newDeleted) working = working.filter(q => !(q.test_id === t.id && q._isNew));
+  render();
+}
+
+function validateTest(t) {
+  const errors = [];
+  if (!t.name || !t.name.trim()) errors.push('нет названия');
+  if (!t.position) errors.push('не выбрана должность');
+  return errors;
+}
+
+function findDuplicateTestIds() {
+  const seen = new Map();
+  const dupIds = new Set();
+  workingTests.filter(t => !t._deleted && t.position && t.name && t.name.trim()).forEach(t => {
+    const key = t.position + '::' + t.name.trim().toLowerCase();
+    if (seen.has(key)) { dupIds.add(t.id); dupIds.add(seen.get(key)); }
+    else seen.set(key, t.id);
+  });
+  return dupIds;
+}
+
+function revalidateTest(idx) {
+  const t = workingTests[idx];
+  let errs = t._deleted ? [] : validateTest(t);
+  if (!t._deleted && findDuplicateTestIds().has(t.id)) errs = errs.concat('такой тест для этой должности уже есть');
+  const errEl = document.querySelector(`[data-test-err-for="${idx}"]`);
+  if (errEl) errEl.textContent = errs.length ? '⚠ ' + errs.join(', ') : '';
+  updatePublishState();
+}
+
+function renderTestList() {
+  const el = document.getElementById('qlist');
+  el.innerHTML = '';
+
+  const addBtn = mkEl('button', { class: 'add-card-btn labeled' });
+  addBtn.textContent = '+ Создать тест';
+  addBtn.onclick = addTest;
+  el.appendChild(addBtn);
+
+  workingTests.forEach((t, idx) => el.appendChild(buildTestCard(t, idx)));
+
+  workingTests.forEach((t, idx) => revalidateTest(idx));
+  updatePublishState();
+}
+
+function buildTestCard(t, idx) {
+  const card = mkEl('div', { class: 'test-card' + (t._deleted ? ' deleted' : '') });
+
+  const idRow = mkEl('div', { class: 'q-id' });
+  idRow.textContent = t.id;
+  card.appendChild(idRow);
+
+  const titleRow = mkEl('div', { class: 'test-title-row' });
+  const nameInput = mkEl('input', { type: 'text', class: 'test-name-input', placeholder: 'Название теста…' });
+  nameInput.value = t.name || '';
+  nameInput.oninput = () => { t.name = nameInput.value; revalidateTest(idx); };
+  titleRow.appendChild(nameInput);
+
+  const delBtn = mkEl('button', { class: 'icon-btn delete', title: t._deleted ? 'Восстановить тест' : 'Удалить тест' });
+  delBtn.innerHTML = ICON_TRASH;
+  delBtn.onclick = () => toggleTestDeleted(idx);
+  titleRow.appendChild(delBtn);
+  card.appendChild(titleRow);
+
+  const metaRow = mkEl('div', { class: 'test-meta-row' });
+  const posSelect = mkEl('select', { class: 'test-position-select' });
+  const emptyOpt = mkEl('option', { value: '' });
+  emptyOpt.textContent = 'Должность…';
+  posSelect.appendChild(emptyOpt);
+  POSITIONS.forEach(p => {
+    const opt = mkEl('option', { value: p.value });
+    opt.textContent = p.label;
+    if (p.value === t.position) opt.selected = true;
+    posSelect.appendChild(opt);
+  });
+  posSelect.onchange = () => { t.position = posSelect.value; revalidateTest(idx); };
+  metaRow.appendChild(posSelect);
+
+  const count = working.filter(q => q.test_id === t.id && !q._deleted).length;
+  const countEl = mkEl('span', { class: 'test-count' });
+  countEl.textContent = `${count} вопрос(ов)`;
+  metaRow.appendChild(countEl);
+  card.appendChild(metaRow);
+
+  const err = mkEl('div', { class: 'q-err', 'data-test-err-for': String(idx) });
+  card.appendChild(err);
+
+  const openBtn = mkEl('button', { class: 'test-open-btn' });
+  openBtn.textContent = 'Редактировать вопросы →';
+  openBtn.onclick = () => { activeTestId = t.id; render(); };
+  card.appendChild(openBtn);
+
+  return card;
+}
+
+// ---------- вопросы конкретного теста ----------
+
 function addQuestion() {
-  const section = working.length ? working[working.length - 1].section : '';
+  if (!activeTestId) return;
+  const t = workingTests.find(x => x.id === activeTestId);
   working.unshift({
-    id: genId(section || 'section'),
-    section: section || '',
-    position_tags: [],
+    id: genId(t ? t.name : 'test'),
+    test_id: activeTestId,
     type: 'single',
     text: '',
     options: ['', ''],
@@ -275,7 +438,7 @@ function addQuestion() {
     _deleted: false,
     _expanded: true,
   });
-  renderList();
+  render();
 }
 
 function toggleDeleted(idx) {
@@ -285,34 +448,11 @@ function toggleDeleted(idx) {
   } else {
     q._deleted = !q._deleted;
   }
-  renderList();
-}
-
-function getAllSections() {
-  return Array.from(new Set(working.filter(q => !q._deleted).map(q => q.section).filter(Boolean)))
-    .sort((a, b) => a.localeCompare(b, 'ru'));
-}
-
-function deleteSection(sectionName) {
-  if (!sectionName) return;
-  const affectedIdx = [];
-  working.forEach((q, i) => { if (q.section === sectionName && !q._deleted) affectedIdx.push(i); });
-  if (affectedIdx.length === 0) return;
-  const ok = confirm(`Удалить раздел «${sectionName}» и все вопросы в нём (${affectedIdx.length})? Правки применятся после публикации.`);
-  if (!ok) return;
-  for (let i = affectedIdx.length - 1; i >= 0; i--) {
-    const idx = affectedIdx[i];
-    const q = working[idx];
-    if (q._isNew) working.splice(idx, 1);
-    else q._deleted = true;
-  }
-  renderList();
+  render();
 }
 
 function validateRow(q) {
   const errors = [];
-  if (!q.section || !q.section.trim()) errors.push('нет раздела');
-  if (!q.position_tags || q.position_tags.length === 0) errors.push('нет должностей');
   if (!q.text || !q.text.trim()) errors.push('нет текста вопроса');
   if (q.type === 'single' || q.type === 'multiple') {
     const opts = (q.options || []).filter(o => o && o.trim() !== '');
@@ -322,28 +462,45 @@ function validateRow(q) {
   return errors;
 }
 
-function positionsLabel(tags) {
-  const labels = POSITIONS.filter(p => (tags || []).includes(p.value)).map(p => p.label);
-  return labels.length ? labels.join(', ') : '—';
+function revalidate(idx) {
+  const q = working[idx];
+  const errs = q._deleted ? [] : validateRow(q);
+  const errEl = document.querySelector(`[data-err-for="${idx}"]`);
+  if (errEl) errEl.textContent = errs.length ? '⚠ ' + errs.join(', ') : '';
+  updatePublishState();
 }
 
-function mkEl(tag, attrs) {
-  const e = document.createElement(tag);
-  Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v));
-  return e;
-}
-function renderList() {
+function renderQuestionsForActiveTest() {
   const el = document.getElementById('qlist');
   el.innerHTML = '';
 
-  const addBtn = mkEl('button', { class: 'add-card-btn' });
-  addBtn.textContent = '+';
-  addBtn.onclick = addQuestion;
-  el.appendChild(addBtn);
+  const t = workingTests.find(x => x.id === activeTestId);
 
-  working.forEach((q, idx) => el.appendChild(buildCard(q, idx)));
+  const backBtn = mkEl('button', { class: 'back-link' });
+  backBtn.textContent = '← Назад к тестам';
+  backBtn.onclick = () => { activeTestId = null; render(); };
+  el.appendChild(backBtn);
 
-  working.forEach((q, idx) => revalidate(idx));
+  const heading = mkEl('div', { class: 'active-test-heading' });
+  heading.textContent = t ? (t.name || '(без названия)') : '(тест не найден)';
+  el.appendChild(heading);
+
+  if (t) {
+    const sub = mkEl('div', { class: 'active-test-sub' });
+    sub.textContent = (POSITIONS.find(p => p.value === t.position) || {}).label || t.position || '—';
+    el.appendChild(sub);
+
+    const addBtn = mkEl('button', { class: 'add-card-btn' });
+    addBtn.textContent = '+';
+    addBtn.onclick = addQuestion;
+    el.appendChild(addBtn);
+  }
+
+  working.forEach((q, idx) => {
+    if (q.test_id === activeTestId) el.appendChild(buildCard(q, idx));
+  });
+
+  working.forEach((q, idx) => { if (q.test_id === activeTestId) revalidate(idx); });
   updatePublishState();
 }
 
@@ -361,20 +518,7 @@ function buildCard(q, idx) {
   titleInput.oninput = () => { q.text = titleInput.value; revalidate(idx); autoGrow(); };
   titleRow.appendChild(titleInput);
 
-  const delBtn = mkEl('button', { class: 'icon-btn delete', title: 'Удалить вопрос' });
-  delBtn.innerHTML = ICON_TRASH;
-  delBtn.onclick = () => toggleDeleted(idx);
-  titleRow.appendChild(delBtn);
-  card.appendChild(titleRow);
-
-  const metaRow = mkEl('div', { class: 'q-meta-row' });
-  metaRow.appendChild(buildSectionField(q, idx));
-
-  const posSummary = mkEl('span', { class: 'q-positions-summary' });
-  posSummary.textContent = positionsLabel(q.position_tags);
-  metaRow.appendChild(posSummary);
-
-  const editBlock = buildEditBlock(q, idx, posSummary);
+  const editBlock = buildEditBlock(q, idx);
 
   const editBtn = mkEl('button', { class: 'icon-btn' + (q._expanded ? ' done' : ''), title: 'Редактировать' });
   editBtn.innerHTML = q._expanded ? ICON_CHECK : ICON_PENCIL;
@@ -384,9 +528,14 @@ function buildCard(q, idx) {
     editBtn.innerHTML = q._expanded ? ICON_CHECK : ICON_PENCIL;
     editBtn.classList.toggle('done', q._expanded);
   };
-  metaRow.appendChild(editBtn);
-  card.appendChild(metaRow);
+  titleRow.appendChild(editBtn);
 
+  const delBtn = mkEl('button', { class: 'icon-btn delete', title: 'Удалить вопрос' });
+  delBtn.innerHTML = ICON_TRASH;
+  delBtn.onclick = () => toggleDeleted(idx);
+  titleRow.appendChild(delBtn);
+
+  card.appendChild(titleRow);
   card.appendChild(editBlock);
 
   const err = mkEl('div', { class: 'q-err', 'data-err-for': String(idx) });
@@ -398,72 +547,9 @@ function buildCard(q, idx) {
   return card;
 }
 
-function buildSectionField(q, idx) {
-  const wrap = mkEl('div', { class: 'q-section-row' });
-
-  const select = mkEl('select', { class: 'q-section-select' });
-  const newOpt = mkEl('option', { value: '__new__' });
-  newOpt.textContent = '+ Новый раздел';
-  select.appendChild(newOpt);
-  getAllSections().forEach(s => {
-    const opt = mkEl('option', { value: s });
-    opt.textContent = s;
-    select.appendChild(opt);
-  });
-
-  const newInput = mkEl('input', { type: 'text', class: 'q-section-new-input', placeholder: 'Название раздела' });
-
-  const knownSections = getAllSections();
-  const isKnown = q.section && knownSections.includes(q.section);
-  select.value = isKnown ? q.section : '__new__';
-  newInput.style.display = isKnown ? 'none' : 'block';
-  newInput.value = isKnown ? '' : (q.section || '');
-
-  select.onchange = () => {
-    if (select.value === '__new__') {
-      newInput.style.display = 'block';
-      newInput.value = '';
-      q.section = '';
-      newInput.focus();
-    } else {
-      newInput.style.display = 'none';
-      q.section = select.value;
-    }
-    revalidate(idx);
-  };
-  newInput.oninput = () => { q.section = newInput.value; revalidate(idx); };
-
-  const trashBtn = mkEl('button', { class: 'icon-btn delete', title: 'Удалить раздел целиком' });
-  trashBtn.innerHTML = ICON_TRASH;
-  trashBtn.onclick = () => deleteSection(q.section);
-
-  wrap.appendChild(select);
-  wrap.appendChild(newInput);
-  wrap.appendChild(trashBtn);
-  return wrap;
-}
-
-function buildEditBlock(q, idx, posSummaryEl) {
+function buildEditBlock(q, idx) {
   const block = mkEl('div', { class: 'q-edit' });
   block.style.display = q._expanded ? 'flex' : 'none';
-
-  const posRow = mkEl('div', { class: 'q-positions-edit' });
-  POSITIONS.forEach(p => {
-    const label = document.createElement('label');
-    const cb = mkEl('input', { type: 'checkbox' });
-    cb.checked = (q.position_tags || []).includes(p.value);
-    cb.onchange = () => {
-      q.position_tags = q.position_tags || [];
-      if (cb.checked) { if (!q.position_tags.includes(p.value)) q.position_tags.push(p.value); }
-      else { q.position_tags = q.position_tags.filter(v => v !== p.value); }
-      posSummaryEl.textContent = positionsLabel(q.position_tags);
-      revalidate(idx);
-    };
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(p.label));
-    posRow.appendChild(label);
-  });
-  block.appendChild(posRow);
 
   const typeSel = mkEl('select', { class: 'q-type-select' });
   TYPES.forEach(t => {
@@ -546,27 +632,20 @@ function renderTypeBody(q, idx, container) {
   container.appendChild(addBtn);
 }
 
-function revalidate(idx) {
-  const q = working[idx];
-  const errs = q._deleted ? [] : validateRow(q);
-  const errEl = document.querySelector(`[data-err-for="${idx}"]`);
-  if (errEl) errEl.textContent = errs.length ? '⚠ ' + errs.join(', ') : '';
-  updatePublishState();
-}
+// ---------- публикация ----------
 
 function updatePublishState() {
-  const hasErrors = working.some(q => !q._deleted && validateRow(q).length > 0);
-  document.getElementById('publishBtn').disabled = hasErrors;
+  const dupTestIds = findDuplicateTestIds();
+  const hasTestErrors = workingTests.some(t => !t._deleted && (validateTest(t).length > 0 || dupTestIds.has(t.id)));
+  const hasQuestionErrors = working.some(q => !q._deleted && validateRow(q).length > 0);
+  document.getElementById('publishBtn').disabled = hasTestErrors || hasQuestionErrors;
 }
 
+function plainTest(t) {
+  return { id: t.id, position: t.position, name: t.name };
+}
 function plainQuestion(q) {
-  const base = {
-    id: q.id,
-    section: q.section,
-    position_tags: q.position_tags || [],
-    type: q.type,
-    text: q.text,
-  };
+  const base = { id: q.id, test_id: q.test_id, type: q.type, text: q.text };
   if (q.type === 'free') {
     if (q.answer_reference) base.answer_reference = q.answer_reference;
   } else {
@@ -575,43 +654,60 @@ function plainQuestion(q) {
   }
   return base;
 }
-
-function isEqualQuestion(a, b) {
+function isEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function computeDiff() {
-  const ops = [];
+  const testOps = [];
+  workingTests.forEach(t => {
+    const plain = plainTest(t);
+    if (t._isNew) {
+      if (!t._deleted) testOps.push({ op: 'add', test: plain });
+      return;
+    }
+    if (t._deleted) {
+      testOps.push({ op: 'delete', id: t.id });
+      return;
+    }
+    const orig = originalTestsById.get(t.id);
+    if (!orig || !isEqual(plainTest(orig), plain)) {
+      testOps.push({ op: 'edit', id: t.id, test: plain });
+    }
+  });
+
+  const questionOps = [];
   working.forEach(q => {
     const plain = plainQuestion(q);
     if (q._isNew) {
-      if (!q._deleted) ops.push({ op: 'add', question: plain });
+      if (!q._deleted) questionOps.push({ op: 'add', question: plain });
       return; // новый и удалённый локально — вообще не публикуется, иначе удаление будет перманентное сразу и рейс кондишн
     }
     if (q._deleted) {
-      ops.push({ op: 'delete', id: q.id });
+      questionOps.push({ op: 'delete', id: q.id });
       return;
     }
     const orig = originalById.get(q.id);
-    // сравниваем через ту же нормализацию (plainQuestion), чтобы легаси-поля вроде
-    // старого "points" не создавали фантомный diff для нетронутых вопросов
-    if (!orig || !isEqualQuestion(plainQuestion(orig), plain)) {
-      ops.push({ op: 'edit', id: q.id, question: plain });
+    // сравниваем через ту же нормализацию (plainQuestion), чтобы легаси-поля не создавали фантомный diff
+    if (!orig || !isEqual(plainQuestion(orig), plain)) {
+      questionOps.push({ op: 'edit', id: q.id, question: plain });
     }
   });
-  return ops;
+
+  return { tests: testOps, questions: questionOps };
 }
 
 async function publish() {
-  const ops = computeDiff();
-  if (ops.length === 0) {
+  const diff = computeDiff();
+  const total = diff.tests.length + diff.questions.length;
+  if (total === 0) {
     setStatus('mainStatus', 'Изменений нет — публиковать нечего', 'ok');
     return;
   }
   const token = localStorage.getItem('gh_token');
   if (!token) { forgetToken(); return; }
 
-  setStatus('mainStatus', `Отправляю ${ops.length} изменени(я/й)…`);
+  setStatus('mainStatus', `Отправляю ${total} изменени(я/й)…`);
   document.getElementById('publishBtn').disabled = true;
   try {
     const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
@@ -622,10 +718,10 @@ async function publish() {
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ref: BRANCH, inputs: { diff: JSON.stringify(ops) } }),
+      body: JSON.stringify({ ref: BRANCH, inputs: { diff: JSON.stringify(diff) } }),
     });
     if (res.status === 204) {
-      setStatus('mainStatus', 'Отправлено. Изменения применятся в течение ~минуты — потом нажми «Обновить банк».', 'ok');
+      setStatus('mainStatus', 'Отправлено. Изменения применятся в течение ~минуты — потом нажми «Получить».', 'ok');
     } else if (res.status === 401 || res.status === 403) {
       setStatus('mainStatus', 'Токен недействителен или не хватает прав (Actions: Read and write)', 'error');
       forgetToken();
