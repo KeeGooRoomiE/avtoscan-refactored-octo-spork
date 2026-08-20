@@ -37,6 +37,10 @@ def validate_test(t):
         raise ValueError(f"Тест {t.get('id')}: неизвестная должность '{t['position']}'")
     if not t["name"].strip():
         raise ValueError(f"Тест {t.get('id')}: пустое название")
+    if "question_count" in t and t["question_count"] is not None:
+        qc = t["question_count"]
+        if not isinstance(qc, int) or isinstance(qc, bool) or qc <= 0:
+            raise ValueError(f"Тест {t.get('id')}: question_count должен быть положительным целым числом")
 
 
 def validate_question(q):
@@ -62,6 +66,10 @@ def validate_question(q):
             raise ValueError(f"Вопрос {q.get('id')}: free-вопрос не должен иметь options/correct")
     else:
         raise ValueError(f"Вопрос {q.get('id')}: неизвестный type '{qtype}'")
+
+    if "category" in q and q["category"] is not None:
+        if not isinstance(q["category"], str) or not q["category"].strip():
+            raise ValueError(f"Вопрос {q.get('id')}: category должна быть непустой строкой (или отсутствовать)")
 
 
 def apply_ops(items, ops, item_key, validate_fn, entity_name):

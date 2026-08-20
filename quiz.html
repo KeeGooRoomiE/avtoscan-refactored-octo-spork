@@ -351,7 +351,9 @@ function startQuiz() {
     return;
   }
 
-  selectedQuestions = shuffle(pool.slice()).slice(0, DEFAULT_QUESTION_COUNT);
+  const test = TESTS.find(t => t.id === testId);
+  const targetCount = (test && test.question_count > 0) ? test.question_count : DEFAULT_QUESTION_COUNT;
+  selectedQuestions = pickBalancedByCategory(pool, targetCount);
   answers = selectedQuestions.map(() => ({ given: [] }));
   currentIndex = 0;
   quizStartedAt = Date.now();
@@ -369,6 +371,35 @@ function shuffle(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+// Если у вопросов расставлены категории — берём примерно поровну из каждой (round-robin
+// по перемешанным группам), чтобы тест не мог случайно состоять почти целиком из одной темы.
+// Без категорий (или если все вопросы без category) — обычный плоский рандом, как раньше.
+function pickBalancedByCategory(pool, count) {
+  const groups = new Map();
+  pool.forEach(q => {
+    const key = q.category || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(q);
+  });
+  groups.forEach(arr => shuffle(arr));
+
+  const keys = shuffle(Array.from(groups.keys()));
+  const picked = [];
+  let anyLeft = true;
+  while (picked.length < count && anyLeft) {
+    anyLeft = false;
+    for (const key of keys) {
+      if (picked.length >= count) break;
+      const arr = groups.get(key);
+      if (arr.length) {
+        picked.push(arr.shift());
+        anyLeft = true;
+      }
+    }
+  }
+  return shuffle(picked);
 }
 
 // ---------- экран теста ----------
