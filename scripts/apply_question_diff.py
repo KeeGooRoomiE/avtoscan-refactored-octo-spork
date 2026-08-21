@@ -9,6 +9,7 @@ QUESTIONS_PATH = "data/questions.jsonl"
 QUESTION_REQUIRED = {"test_id", "type", "text"}
 TEST_REQUIRED = {"position", "name"}
 VALID_POSITIONS = {"mop", "tp", "service"}
+VALID_CATEGORIES = {"Регламенты", "Оборудование", "ЦРМ/Битрикс", "1С", "Законодательство"}
 
 
 def load_jsonl(path):
@@ -68,8 +69,8 @@ def validate_question(q):
         raise ValueError(f"Вопрос {q.get('id')}: неизвестный type '{qtype}'")
 
     if "category" in q and q["category"] is not None:
-        if not isinstance(q["category"], str) or not q["category"].strip():
-            raise ValueError(f"Вопрос {q.get('id')}: category должна быть непустой строкой (или отсутствовать)")
+        if q["category"] not in VALID_CATEGORIES:
+            raise ValueError(f"Вопрос {q.get('id')}: неизвестная категория '{q['category']}'")
 
 
 def apply_ops(items, ops, item_key, validate_fn, entity_name):
