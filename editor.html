@@ -75,6 +75,12 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .test-qcount-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .test-qcount-label { white-space: nowrap; }
 .test-qcount-input { width: 56px; border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 6px; border-radius: 6px; }
+.test-catcounts { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: #fafcff; border: 1px dashed var(--border); border-radius: 8px; }
+.test-catcounts-label { font-size: 11px; color: var(--muted); }
+.test-catcount-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.test-catcount-name { color: var(--text); }
+.test-catcount-input { width: 56px; border: 1.5px solid var(--border); background: #fff; color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 6px; border-radius: 6px; flex-shrink: 0; }
+.test-catcounts-total { font-size: 11px; color: var(--blue); font-weight: 700; }
 .q-category-input { border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12.5px; padding: 6px 9px; border-radius: 6px; align-self: flex-start; }
 .test-open-btn { align-self: stretch; text-align: center; padding: 9px; border-radius: 8px; border: 1.5px solid var(--border); background: #f4f7fb; color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; }
 .test-open-btn:hover { background: #eef3fa; }
@@ -116,6 +122,40 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 <body>
 
 <div class="site-header"><img src="header.jpg" alt="АвтоСкан"></div>
+
+<!--
+
+    -----------------------------------------------
+    ===============================================
+    ***********************************************
+
+    Если ты читаешь это сообщение, значит мы
+    с тобой думаем одинаково.
+
+    Тебе выдали тест.
+
+    Ты решаешь, что ответы наверняка
+    лежат где-то здесь.
+
+    И ведь обычно это действительно работает.
+    Ну где-то же точно лежат ответы, да?
+
+    Ну, кстати, лежат же!
+
+    Открой консоль и напиши там api.getanswers()
+
+    Тебе будет выдан список ответов на текущие
+    вопросы, которые у тебя в тесте лежат.
+    Вот так просто, да
+
+    Это за твою любознательность.
+
+    ***********************************************
+    ===============================================
+    -----------------------------------------------
+
+-->
+
 <!-- TODO: придумать что сделать с тупым растягиванием -->
 
 <div class="main">
@@ -418,7 +458,7 @@ function buildTestCard(t, idx) {
 
   const qcWrap = mkEl('div', { class: 'test-qcount-wrap' });
   const qcLabel = mkEl('span', { class: 'test-qcount-label' });
-  qcLabel.textContent = 'На попытку:';
+  qcLabel.textContent = 'Используется вопросов:';
   qcWrap.appendChild(qcLabel);
   const qcInput = mkEl('input', { type: 'number', min: '1', class: 'test-qcount-input', placeholder: String(DEFAULT_QUESTION_COUNT) });
   qcInput.value = t.question_count || '';
@@ -430,6 +470,47 @@ function buildTestCard(t, idx) {
   qcWrap.appendChild(qcInput);
   metaRow.appendChild(qcWrap);
   card.appendChild(metaRow);
+
+  const categoriesInTest = Array.from(new Set(
+    working.filter(q => q.test_id === t.id && !q._deleted && q.category).map(q => q.category)
+  ));
+  if (categoriesInTest.length > 0) {
+    t.category_counts = t.category_counts || {};
+
+    const ccWrap = mkEl('div', { class: 'test-catcounts' });
+    const ccLabel = mkEl('div', { class: 'test-catcounts-label' });
+    ccLabel.textContent = 'Точно по категориям (необязательно, переопределяет «Используется вопросов»):';
+    ccWrap.appendChild(ccLabel);
+
+    const totalEl = mkEl('div', { class: 'test-catcounts-total' });
+    const updateTotal = () => {
+      const sum = Object.values(t.category_counts).reduce((a, b) => a + b, 0);
+      totalEl.textContent = sum > 0 ? `Итого по категориям: ${sum} — переопределяет «Используется вопросов»` : '';
+    };
+
+    categoriesInTest.forEach(cat => {
+      const available = working.filter(q => q.test_id === t.id && !q._deleted && q.category === cat).length;
+      const row = mkEl('div', { class: 'test-catcount-row' });
+      const nameSpan = mkEl('span', { class: 'test-catcount-name' });
+      nameSpan.textContent = `${cat} (доступно: ${available})`;
+      row.appendChild(nameSpan);
+      const input = mkEl('input', { type: 'number', min: '0', class: 'test-catcount-input', placeholder: '0' });
+      input.value = t.category_counts[cat] || '';
+      input.oninput = () => {
+        const n = parseInt(input.value, 10);
+        if (input.value !== '' && n > 0) t.category_counts[cat] = n;
+        else delete t.category_counts[cat];
+        updateTotal();
+        revalidateTest(idx);
+      };
+      row.appendChild(input);
+      ccWrap.appendChild(row);
+    });
+
+    updateTotal();
+    ccWrap.appendChild(totalEl);
+    card.appendChild(ccWrap);
+  }
 
   const err = mkEl('div', { class: 'q-err', 'data-test-err-for': String(idx) });
   card.appendChild(err);
@@ -679,6 +760,7 @@ function updatePublishState() {
 function plainTest(t) {
   const base = { id: t.id, position: t.position, name: t.name };
   if (t.question_count) base.question_count = t.question_count;
+  if (t.category_counts && Object.keys(t.category_counts).length > 0) base.category_counts = t.category_counts;
   return base;
 }
 function plainQuestion(q) {

@@ -42,6 +42,15 @@ def validate_test(t):
         qc = t["question_count"]
         if not isinstance(qc, int) or isinstance(qc, bool) or qc <= 0:
             raise ValueError(f"Тест {t.get('id')}: question_count должен быть положительным целым числом")
+    if "category_counts" in t and t["category_counts"] is not None:
+        cc = t["category_counts"]
+        if not isinstance(cc, dict) or not cc:
+            raise ValueError(f"Тест {t.get('id')}: category_counts должен быть непустым объектом {{категория: количество}}")
+        for cat, n in cc.items():
+            if cat not in VALID_CATEGORIES:
+                raise ValueError(f"Тест {t.get('id')}: неизвестная категория '{cat}' в category_counts")
+            if not isinstance(n, int) or isinstance(n, bool) or n <= 0:
+                raise ValueError(f"Тест {t.get('id')}: category_counts['{cat}'] должен быть положительным целым числом")
 
 
 def validate_question(q):

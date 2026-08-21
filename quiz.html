@@ -73,6 +73,14 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 /* --- стартовый экран --- */
 .form-block { width: 100%; max-width: 460px; display: flex; flex-direction: column; }
+.manager-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.manager-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 14px; border-radius: 8px; border: 2px solid #e0e6ee; background: #fff; cursor: pointer; transition: all .15s; text-align: left; }
+.manager-btn.checked { border-color: var(--blue); box-shadow: 0 3px 12px rgba(26,86,160,.14); }
+.manager-btn.checked .ans-circle { border-color: var(--blue); background: var(--blue); }
+.manager-btn.checked .ans-circle::after { opacity: 1; }
+.manager-info { display: flex; flex-direction: column; gap: 1px; }
+.manager-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.manager-email { font-size: 11px; color: var(--muted); }
 
 /* --- экран теста --- */
 .quiz-wrap { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 18px; }
@@ -162,6 +170,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
       <option value="">Сначала выберите должность</option>
     </select>
 
+    <div class="field-label" id="managerLabel" style="display:none;">Кому отправить результат</div>
+    <div class="manager-list" id="managerList"></div>
+
     <div class="status-msg" id="startStatus"></div>
     <button class="btn btn-green" id="startBtn" disabled onclick="startQuiz()">Начать тест</button>
   </div>
@@ -225,6 +236,12 @@ const REPO = 'avtoscan-refactored-octo-spork';
 const BRANCH = 'main';
 const RAW_TESTS_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/tests.jsonl?t=` + Date.now();
 const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
+const RAW_MANAGERS_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/managers.json?t=` + Date.now();
+
+// Скоуплен ровно на POST /api/quiz-result (rate-limited, CORS только на test.avtoscan42.ru) —
+// не настоящий секрет, см. wikinest_avtoscan/.claude/brief-quiz-result-endpoint.md
+const QUIZ_RESULT_ENDPOINT = 'https://base.avtoscan42.ru/api/quiz-result';
+const QUIZ_TOKEN = 'R8E8E3nXZOSPxBg9FfYn0L5HCbbOod0gzmXuixbogpE';
 
 const POSITIONS = [
   { value: 'mop', label: 'Отдел продаж' },
@@ -250,6 +267,8 @@ window.api = {
 
 let BANK = [];
 let TESTS = [];
+let MANAGERS = [];
+let selectedManager = null;
 let selectedQuestions = [];
 let answers = [];
 let currentIndex = 0;
@@ -269,7 +288,7 @@ document.getElementById('positionSelect').innerHTML =
 (async function init() {
   if (location.hash.startsWith('#d=')) {
     try {
-      const token = fromBase64Url(location.hash.slice(3));
+      const token = await fromBase64Url(location.hash.slice(3));
       showResult(token, false);
       return;
     } catch (e) {
@@ -282,11 +301,12 @@ document.getElementById('positionSelect').innerHTML =
     }
   }
   try {
-    const [testsRes, qRes] = await Promise.all([fetch(RAW_TESTS_URL), fetch(RAW_DATA_URL)]);
+    const [testsRes, qRes, mRes] = await Promise.all([fetch(RAW_TESTS_URL), fetch(RAW_DATA_URL), fetch(RAW_MANAGERS_URL)]);
     const testsText = testsRes.ok ? await testsRes.text() : '';
     const qText = qRes.ok ? await qRes.text() : '';
     TESTS = testsText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
     BANK = qText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    MANAGERS = mRes.ok ? await mRes.json() : [];
   } catch (e) {
     document.getElementById('startStatus').textContent = 'Не удалось загрузить банк вопросов: ' + e.message;
   }
@@ -294,19 +314,45 @@ document.getElementById('positionSelect').innerHTML =
 
 // ---------- base64url для самодостаточной ссылки ----------
 
-function toBase64Url(obj) {
+// gzip через нативный CompressionStream — без внешних библиотек. Старые ссылки (без сжатия)
+// и браузеры без поддержки декодируются тем же путём: DecompressionStream бросает на не-gzip
+// данных, тогда просто берём байты как есть.
+async function gzipCompress(bytes) {
+  if (!window.CompressionStream) return bytes;
+  const cs = new CompressionStream('gzip');
+  const writer = cs.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+}
+async function gzipDecompress(bytes) {
+  if (!window.DecompressionStream) return bytes;
+  try {
+    const ds = new DecompressionStream('gzip');
+    const writer = ds.writable.getWriter();
+    writer.write(bytes);
+    writer.close();
+    return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+  } catch (e) {
+    return bytes;
+  }
+}
+
+async function toBase64Url(obj) {
   const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  const compressed = await gzipCompress(bytes);
   let binary = '';
-  bytes.forEach(b => { binary += String.fromCharCode(b); });
+  compressed.forEach(b => { binary += String.fromCharCode(b); });
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-function fromBase64Url(str) {
+async function fromBase64Url(str) {
   let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
   while (b64.length % 4) b64 += '=';
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return JSON.parse(new TextDecoder().decode(bytes));
+  const decompressed = await gzipDecompress(bytes);
+  return JSON.parse(new TextDecoder().decode(decompressed));
 }
 
 // ---------- стартовый экран ----------
@@ -317,6 +363,9 @@ function onPositionChange() {
   if (!position) {
     sectionSelect.innerHTML = '<option value="">Сначала выберите должность</option>';
     sectionSelect.disabled = true;
+    selectedManager = null;
+    document.getElementById('managerList').innerHTML = '';
+    document.getElementById('managerLabel').style.display = 'none';
     onStartFormChange();
     return;
   }
@@ -326,14 +375,46 @@ function onPositionChange() {
   sectionSelect.innerHTML = tests.length
     ? '<option value="">Выберите раздел</option>' + tests.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')
     : '<option value="">Нет доступных разделов</option>';
+
+  renderManagerList(position);
   onStartFormChange();
+}
+
+function renderManagerList(position) {
+  selectedManager = null;
+  const list = document.getElementById('managerList');
+  const label = document.getElementById('managerLabel');
+  list.innerHTML = '';
+
+  const eligible = MANAGERS.filter(m => !m.position_tags || m.position_tags.includes(position));
+  if (eligible.length === 0) {
+    label.style.display = 'none';
+    return;
+  }
+  label.style.display = 'block';
+  eligible.forEach((m, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'manager-btn';
+    btn.innerHTML = `<span class="ans-circle"></span><span class="manager-info"><span class="manager-name"></span><span class="manager-email"></span></span>`;
+    btn.querySelector('.manager-name').textContent = m.name;
+    btn.querySelector('.manager-email').textContent = m.email;
+    btn.onclick = () => {
+      selectedManager = m;
+      document.querySelectorAll('.manager-btn').forEach(b => b.classList.remove('checked'));
+      btn.classList.add('checked');
+      onStartFormChange();
+    };
+    list.appendChild(btn);
+  });
 }
 
 function onStartFormChange() {
   const name = document.getElementById('fullNameInput').value.trim();
   const position = document.getElementById('positionSelect').value;
   const section = document.getElementById('sectionSelect').value;
-  document.getElementById('startBtn').disabled = !(name && position && section);
+  const managerOk = document.getElementById('managerList').children.length === 0 || !!selectedManager;
+  document.getElementById('startBtn').disabled = !(name && position && section && managerOk);
 }
 
 //Продолжай искать. 
@@ -352,8 +433,13 @@ function startQuiz() {
   }
 
   const test = TESTS.find(t => t.id === testId);
-  const targetCount = (test && test.question_count > 0) ? test.question_count : DEFAULT_QUESTION_COUNT;
-  selectedQuestions = pickBalancedByCategory(pool, targetCount);
+  const hasCategoryCounts = test && test.category_counts && Object.values(test.category_counts).some(n => n > 0);
+  if (hasCategoryCounts) {
+    selectedQuestions = pickByExactCategoryCounts(pool, test.category_counts);
+  } else {
+    const targetCount = (test && test.question_count > 0) ? test.question_count : DEFAULT_QUESTION_COUNT;
+    selectedQuestions = pickBalancedByCategory(pool, targetCount);
+  }
   answers = selectedQuestions.map(() => ({ given: [] }));
   currentIndex = 0;
   quizStartedAt = Date.now();
@@ -399,6 +485,27 @@ function pickBalancedByCategory(pool, count) {
       }
     }
   }
+  return shuffle(picked);
+}
+
+// Точные количества по категориям, заданные в редакторе (test.category_counts = {категория: N}).
+// Категории, не перечисленные в category_counts, в выборку не попадают вообще — это осознанный
+// куррированный набор, а не «плюс сколько-то случайных сверху». Если в категории вопросов меньше,
+// чем запрошено — берём сколько есть, без ошибки.
+function pickByExactCategoryCounts(pool, categoryCounts) {
+  const groups = new Map();
+  pool.forEach(q => {
+    const key = q.category || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(q);
+  });
+  groups.forEach(arr => shuffle(arr));
+
+  const picked = [];
+  Object.entries(categoryCounts).forEach(([cat, n]) => {
+    const arr = groups.get(cat) || [];
+    picked.push(...arr.slice(0, n));
+  });
   return shuffle(picked);
 }
 
@@ -481,7 +588,7 @@ function goNext() {
   renderQuestion();
 }
 
-function finishQuiz() {
+async function finishQuiz() {
   if (timerHandle) clearInterval(timerHandle);
 
   const durationSeconds = Math.round((Date.now() - quizStartedAt) / 1000);
@@ -518,9 +625,49 @@ function finishQuiz() {
     total_count: totalCount,
   };
 
-  location.hash = 'd=' + toBase64Url(token);
+  location.hash = 'd=' + await toBase64Url(token);
   document.getElementById('quizScreen').style.display = 'none';
   showResult(token, true);
+
+  sendResultEmail(token);
+}
+
+// ---------- отправка результата на почту (неблокирующе, не мешает показу результата) ----------
+
+function sendResultEmail(token) {
+  if (!selectedManager) return;
+
+  const answersForEmail = token.answers.slice(0, 200).map(a => {
+    let givenText;
+    if (a.type === 'free') {
+      givenText = a.given[0] || '';
+    } else {
+      givenText = a.given.length ? a.given.map(gi => a.options[gi]).join(', ') : '—';
+    }
+    return { text: a.text, type: a.type, given_text: givenText, is_correct: a.is_correct };
+  });
+
+  fetch(QUIZ_RESULT_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Quiz-Token': QUIZ_TOKEN,
+    },
+    body: JSON.stringify({
+      recipient_email: selectedManager.email,
+      recipient_name: selectedManager.name,
+      full_name: token.full_name,
+      position: POSITION_LABELS[token.position] || token.position,
+      test_name: token.section,
+      score_percent: token.score_percent,
+      correct_count: token.correct_count,
+      total_count: token.total_count,
+      duration_seconds: token.duration_seconds,
+      timestamp: token.timestamp,
+      result_link: location.href,
+      answers: answersForEmail,
+    }),
+  }).catch(() => {}); // сетевая ошибка не должна ломать показ результата сотруднику
 }
 
 // ---------- экран результата ----------
@@ -605,9 +752,9 @@ function recomputeScore(token) {
   token.score_percent = total ? Math.round((correct / total) * 1000) / 10 : 0;
 }
 
-function recalcAndRelink() {
+async function recalcAndRelink() {
   recomputeScore(currentToken);
-  location.hash = 'd=' + toBase64Url(currentToken);
+  location.hash = 'd=' + await toBase64Url(currentToken);
   showResult(currentToken, true);
   setStatus('recalcStatus', 'Ссылка обновлена — скопируйте новую и отправьте сотруднику/сохраните.', 'ok');
 }
