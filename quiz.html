@@ -602,6 +602,8 @@ async function finishQuiz() {
     return { question_id: q.id, text: q.text, options: q.options, type: q.type, given, correct, is_correct: isCorrect };
   });
 
+  //TODO: разделить на экран ответа и экран с ссылкой
+
   const scorable = detailedAnswers.filter(a => a.type !== 'free');
   const correctCount = scorable.filter(a => a.is_correct).length;
   const totalCount = scorable.length;
@@ -629,10 +631,14 @@ async function finishQuiz() {
   document.getElementById('quizScreen').style.display = 'none';
   showResult(token, true);
 
-  sendResultEmail(token);
+  sendResultEmail(token); // - tut 
 }
 
 // ---------- отправка результата на почту (неблокирующе, не мешает показу результата) ----------
+
+
+// TODO: переписать, логика кривая
+
 
 function sendResultEmail(token) {
   if (!selectedManager) return;
