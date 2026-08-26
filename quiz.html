@@ -240,7 +240,9 @@ const RAW_MANAGERS_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${B
 
 // Скоуплен ровно на POST /api/quiz-result (rate-limited, CORS только на test.avtoscan42.ru) —
 // не настоящий секрет, см. wikinest_avtoscan/.claude/brief-quiz-result-endpoint.md
-const QUIZ_RESULT_ENDPOINT = 'https://base.avtoscan42.ru/api/quiz-result';
+// Порт 26502 указан явно: 443 у base.avtoscan42.ru снаружи не открывается (проверено 26.08.2026),
+// рабочий вход — только NAT-порт. См. wikinest_avtoscan/Caddyfile — VM за общим IP провайдера.
+const QUIZ_RESULT_ENDPOINT = 'https://base.avtoscan42.ru:26502/api/quiz-result';
 const QUIZ_TOKEN = 'R8E8E3nXZOSPxBg9FfYn0L5HCbbOod0gzmXuixbogpE';
 
 const POSITIONS = [
