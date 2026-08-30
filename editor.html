@@ -171,11 +171,10 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
   <div id="editorScreen" style="display:none; width:100%; flex-direction:column; align-items:center; gap:20px;">
     <div class="toolbar">
       <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>Опубликовать изменения</button>
-      <button class="btn btn-ghost" onclick="loadBank()">Получить</button>
       <div class="spacer"></div>
       <div class="status-msg" id="mainStatus"></div>
     </div>
-    <div class="hint">Все изменения происходят локально. Изменения обязательно нужно Опубликовать по завершению — применяются сразу. "Получить" сбрасывает несохранённые правки до последнего опубликованного состояния.</div>
+    <div class="hint">Все изменения происходят локально. Изменения обязательно нужно Опубликовать по завершению — применяются сразу.</div>
 
     <div class="qlist" id="qlist"></div>
   </div>
