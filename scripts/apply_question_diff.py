@@ -9,7 +9,7 @@ QUESTIONS_PATH = "data/questions.jsonl"
 QUESTION_REQUIRED = {"test_id", "type", "text"}
 TEST_REQUIRED = {"position", "name"}
 VALID_POSITIONS = {"mop", "tp", "service"}
-VALID_CATEGORIES = {"Регламенты", "Оборудование", "ЦРМ/Битрикс", "1С", "Законодательство"}
+VALID_CATEGORIES = {"Регламенты", "Оборудование", "CRM Bitrix24", "1С", "Законодательство"}
 
 
 def load_jsonl(path):

@@ -1,8 +1,11 @@
 [
-  { "name": "Пушкарева Юлия", "email": "kop3@navi42.ru" },
   { "name": "Петрушин Станислав", "email": "pso@navi42.ru" },
-  { "name": "Баумштарк Марк", "email": "service@navi42.ru" },
-  { "name": "Мачульский Андрей", "email": "mav@navi42.ru" },
   { "name": "Мальцева Анастасия", "email": "kao@navi42.ru" },
-  { "name": "Халепо Сергей", "email": "hsv@navi42.ru" }
+  { "name": "Халепо Сергей", "email": "hsv@navi42.ru" },
+  { "name": "Пушкарева Юлия", "email": "kop3@navi42.ru", "position_tags": ["mop"] },
+  { "name": "Баумштарк Марк", "email": "service@navi42.ru", "position_tags": ["tp"] },
+  { "name": "Величко Максим", "email": "rto@navi42.ru", "position_tags": ["service"] },
+  { "name": "Гуляева Евгения", "email": "rop@navi42.ru", "position_tags": ["mop"] },
+  { "name": "Вотинцев Вячеслав", "email": "rtp@navi42.ru", "position_tags": ["service"] },
+  { "name": "Надточий Андрей", "email": "maz@navi42.ru", "position_tags": ["service"] }
 ]
