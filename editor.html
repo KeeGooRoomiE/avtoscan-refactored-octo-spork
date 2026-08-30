@@ -168,24 +168,14 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
     <div class="status-msg error" id="lockStatus"></div>
   </div>
 
-  <div id="tokenScreen" class="card" style="display:none">
-    <div class="panel-title">Токен для редактирования</div>
-    <div class="field-label">Fine-grained PAT</div>
-    <input class="field-input" id="tokenInput" type="password" placeholder="github_pat_..." autocomplete="off">
-    <button class="btn btn-blue" style="width:100%" onclick="saveToken()">Сохранить и продолжить</button>
-    <div class="status-msg error" id="tokenStatus"></div>
-    <div class="hint" style="margin-top:8px;max-width:none;">При обновнелии страницы или выходе из нее, необходимо будет ввести его снова</div>
-  </div>
-
   <div id="editorScreen" style="display:none; width:100%; flex-direction:column; align-items:center; gap:20px;">
     <div class="toolbar">
       <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>Опубликовать изменения</button>
       <button class="btn btn-ghost" onclick="loadBank()">Получить</button>
-      <button class="btn btn-ghost" onclick="forgetToken()">Сменить токен</button>
       <div class="spacer"></div>
       <div class="status-msg" id="mainStatus"></div>
     </div>
-    <div class="hint">Все изменения происходят локально. Изменения обязательно нужно Опубликовать по завершению, так же можно их отменить через "Получить" - сбрасывает до последнего актуального состояния. Если обновить страницу - доступ нужно будет указывать снова и весь прогресс будет сброшен.</div>
+    <div class="hint">Все изменения происходят локально. Изменения обязательно нужно Опубликовать по завершению — применяются сразу. "Получить" сбрасывает несохранённые правки до последнего опубликованного состояния.</div>
 
     <div class="qlist" id="qlist"></div>
   </div>
@@ -197,13 +187,16 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 <script>
 
   //глобальные настройки под последующий шаблон
-const OWNER = 'KeeGooRoomiE';
-const REPO = 'avtoscan-refactored-octo-spork';
-const BRANCH = 'main';
-const WORKFLOW_FILE = 'edit-questions.yml';
 const PASSWORD_HASH_HEX = 'f956298be4244f631c2b9e4125a6c0447b85898319626d6d2000c900fabab27e';
-const RAW_TESTS_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/tests.jsonl?t=` + Date.now();
-const RAW_DATA_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/data/questions.jsonl?t=` + Date.now();
+
+// Порт 26502: 443 у base.avtoscan42.ru снаружи не открывается (см. wikinest_avtoscan/Caddyfile).
+const QUIZ_BASE = 'https://base.avtoscan42.ru:26502';
+const QUIZ_DATA_TESTS_URL = `${QUIZ_BASE}/api/quiz-data/tests`;
+const QUIZ_DATA_QUESTIONS_URL = `${QUIZ_BASE}/api/quiz-data/questions`;
+const QUIZ_DATA_PUBLISH_URL = `${QUIZ_BASE}/api/quiz-data/publish`;
+// Оба — не настоящие секреты, урезаны до своей ручки, см. wikinest_avtoscan/.claude/brief-quiz-backend-migration.md
+const QUIZ_TOKEN = 'R8E8E3nXZOSPxBg9FfYn0L5HCbbOod0gzmXuixbogpE';       // чтение банка (X-Quiz-Token)
+const EDITOR_API_TOKEN = 'PQBo1MA8lwoCfQV7Et7_dHk4wYAh6P-d1NHaVwOCfYQ'; // публикация (X-Editor-Token)
 
 const POSITIONS = [
   { value: 'mop', label: 'Отдел продаж' },
@@ -256,30 +249,7 @@ async function tryUnlock() {
 }
 
 function afterUnlock() {
-  const token = localStorage.getItem('gh_token');
-  if (!token) {
-    document.getElementById('tokenScreen').style.display = 'block';
-  } else {
-    showEditor();
-  }
-}
-
-function saveToken() {
-  const statusEl = document.getElementById('tokenStatus');
-  const token = document.getElementById('tokenInput').value.trim();
-  if (!token) {
-    statusEl.textContent = 'Введите токен';
-    return;
-  }
-  localStorage.setItem('gh_token', token);
-  document.getElementById('tokenScreen').style.display = 'none';
   showEditor();
-}
-
-function forgetToken() {
-  localStorage.removeItem('gh_token');
-  document.getElementById('editorScreen').style.display = 'none';
-  document.getElementById('tokenScreen').style.display = 'block';
 }
 
 function showEditor() {
@@ -297,14 +267,12 @@ async function loadBank() {
   setStatus('mainStatus', 'Загружаю банк…');
   try {
     const [testsRes, qRes] = await Promise.all([
-      fetch(RAW_TESTS_URL + '&r=' + Math.random()),
-      fetch(RAW_DATA_URL + '&r=' + Math.random()),
+      fetch(QUIZ_DATA_TESTS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN } }),
+      fetch(QUIZ_DATA_QUESTIONS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN } }),
     ]);
-    const testsText = testsRes.ok ? await testsRes.text() : '';
-    const qText = qRes.ok ? await qRes.text() : '';
-
-    const tests = testsText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
-    const questions = qText.split('\n').map(l => l.trim()).filter(Boolean).map(l => JSON.parse(l));
+    if (!testsRes.ok || !qRes.ok) throw new Error(`бэкенд вернул ${testsRes.status}/${qRes.status}`);
+    const tests = await testsRes.json();
+    const questions = await qRes.json();
 
     originalTestsById = new Map(tests.map(t => [t.id, JSON.parse(JSON.stringify(t))]));
     workingTests = tests.map(t => Object.assign(JSON.parse(JSON.stringify(t)), { _isNew: false, _deleted: false }));
@@ -456,36 +424,49 @@ function buildTestCard(t, idx) {
   countEl.textContent = `${count} вопрос(ов) в банке`;
   metaRow.appendChild(countEl);
 
-  const qcWrap = mkEl('div', { class: 'test-qcount-wrap' });
-  const qcLabel = mkEl('span', { class: 'test-qcount-label' });
-  qcLabel.textContent = 'Используется вопросов:';
-  qcWrap.appendChild(qcLabel);
-  const qcInput = mkEl('input', { type: 'number', min: '1', class: 'test-qcount-input', placeholder: String(DEFAULT_QUESTION_COUNT) });
-  qcInput.value = t.question_count || '';
-  qcInput.oninput = () => {
-    const n = parseInt(qcInput.value, 10);
-    t.question_count = (qcInput.value !== '' && n > 0) ? n : null;
-    revalidateTest(idx);
-  };
-  qcWrap.appendChild(qcInput);
-  metaRow.appendChild(qcWrap);
-  card.appendChild(metaRow);
-
   const categoriesInTest = Array.from(new Set(
     working.filter(q => q.test_id === t.id && !q._deleted && q.category).map(q => q.category)
   ));
+  const uncategorizedCount = working.filter(q => q.test_id === t.id && !q._deleted && !q.category).length;
+
+  if (categoriesInTest.length === 0) {
+    // В тесте вообще нет вопросов с категорией — работает простой общий счётчик (сколько случайно
+    // взять из всего пула). Как только у теста появится хотя бы один вопрос с категорией, этот
+    // счётчик перестаёт использоваться — выбор идёт строго по категориям, см. ниже.
+    const qcWrap = mkEl('div', { class: 'test-qcount-wrap' });
+    const qcLabel = mkEl('span', { class: 'test-qcount-label' });
+    qcLabel.textContent = 'Используется вопросов:';
+    qcWrap.appendChild(qcLabel);
+    const qcInput = mkEl('input', { type: 'number', min: '1', class: 'test-qcount-input', placeholder: String(DEFAULT_QUESTION_COUNT) });
+    qcInput.value = t.question_count || '';
+    qcInput.oninput = () => {
+      const n = parseInt(qcInput.value, 10);
+      t.question_count = (qcInput.value !== '' && n > 0) ? n : null;
+      revalidateTest(idx);
+    };
+    qcWrap.appendChild(qcInput);
+    metaRow.appendChild(qcWrap);
+  }
+  card.appendChild(metaRow);
+
   if (categoriesInTest.length > 0) {
     t.category_counts = t.category_counts || {};
 
     const ccWrap = mkEl('div', { class: 'test-catcounts' });
     const ccLabel = mkEl('div', { class: 'test-catcounts-label' });
-    ccLabel.textContent = 'Точно по категориям (необязательно, переопределяет «Используется вопросов»):';
+    ccLabel.textContent = 'Сколько вопросов брать по каждой категории (пусто или 0 = взять все вопросы категории):';
     ccWrap.appendChild(ccLabel);
 
     const totalEl = mkEl('div', { class: 'test-catcounts-total' });
     const updateTotal = () => {
-      const sum = Object.values(t.category_counts).reduce((a, b) => a + b, 0);
-      totalEl.textContent = sum > 0 ? `Итого по категориям: ${sum} — переопределяет «Используется вопросов»` : '';
+      let sum = 0;
+      categoriesInTest.forEach(cat => {
+        const available = working.filter(q => q.test_id === t.id && !q._deleted && q.category === cat).length;
+        const n = t.category_counts[cat];
+        sum += (n > 0 ? Math.min(n, available) : available);
+      });
+      sum += uncategorizedCount; // вопросы без категории в этом пуле тоже участвуют в выборке целиком
+      totalEl.textContent = `Итого будет выбрано за попытку: ${sum}`;
     };
 
     categoriesInTest.forEach(cat => {
@@ -494,7 +475,7 @@ function buildTestCard(t, idx) {
       const nameSpan = mkEl('span', { class: 'test-catcount-name' });
       nameSpan.textContent = `${cat} (доступно: ${available})`;
       row.appendChild(nameSpan);
-      const input = mkEl('input', { type: 'number', min: '0', class: 'test-catcount-input', placeholder: '0' });
+      const input = mkEl('input', { type: 'number', min: '0', class: 'test-catcount-input', placeholder: '0 = все' });
       input.value = t.category_counts[cat] || '';
       input.oninput = () => {
         const n = parseInt(input.value, 10);
@@ -824,30 +805,30 @@ async function publish() {
     setStatus('mainStatus', 'Изменений нет — публиковать нечего', 'ok');
     return;
   }
-  const token = localStorage.getItem('gh_token');
-  if (!token) { forgetToken(); return; }
 
-  setStatus('mainStatus', `Отправляю ${total} изменени(я/й)…`);
+  setStatus('mainStatus', `Публикую ${total} изменени(я/й)…`);
   document.getElementById('publishBtn').disabled = true;
   try {
-    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`, {
+    const res = await fetch(QUIZ_DATA_PUBLISH_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
+        'X-Editor-Token': EDITOR_API_TOKEN,
       },
-      body: JSON.stringify({ ref: BRANCH, inputs: { diff: JSON.stringify(diff) } }),
+      body: JSON.stringify(diff),
     });
-    if (res.status === 204) {
-      setStatus('mainStatus', 'Отправлено. Изменения применятся в течение ~минуты — потом нажми «Получить».', 'ok');
-    } else if (res.status === 401 || res.status === 403) {
-      setStatus('mainStatus', 'Токен недействителен или не хватает прав (Actions: Read and write)', 'error');
-      forgetToken();
+    if (res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setStatus('mainStatus', `Опубликовано: тестов ${body.tests_count ?? '?'}, вопросов ${body.questions_count ?? '?'}`, 'ok');
+      await loadBank();
+      return;
+    } else if (res.status === 401) {
+      setStatus('mainStatus', 'Токен редактора недействителен', 'error');
+    } else if (res.status === 429) {
+      setStatus('mainStatus', 'Слишком много запросов подряд — подождите немного и повторите', 'error');
     } else {
-      const body = await res.text();
-      setStatus('mainStatus', `Ошибка GitHub API: ${res.status} ${body}`, 'error');
+      const err = await res.json().catch(() => ({}));
+      setStatus('mainStatus', `Ошибка публикации: ${err.error || res.status}`, 'error');
     }
   } catch (e) {
     setStatus('mainStatus', 'Ошибка сети: ' + e.message, 'error');
