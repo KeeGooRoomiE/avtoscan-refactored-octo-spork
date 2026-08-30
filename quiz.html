@@ -562,14 +562,21 @@ async function finishQuiz() {
 function sendResultEmail(token) {
   if (!selectedManager) return;
 
-  const answersForEmail = token.answers.slice(0, 200).map(a => {
+  // given_text/is_correct — для письма (текстовое форматирование на стороне бэкенда);
+  // given/options/correct/manager_verdict — для экрана руководителя (?r=<id>), которому
+  // нужны сырые данные, чтобы отрисовать разбор и уметь пересчитывать % при правке вердикта.
+  const answersForStorage = token.answers.slice(0, 200).map(a => {
     let givenText;
     if (a.type === 'free') {
       givenText = a.given[0] || '';
     } else {
       givenText = a.given.length ? a.given.map(gi => a.options[gi]).join(', ') : '—';
     }
-    return { text: a.text, type: a.type, given_text: givenText, is_correct: a.is_correct };
+    return {
+      question_id: a.question_id, text: a.text, type: a.type,
+      given: a.given, options: a.options, correct: a.correct,
+      given_text: givenText, is_correct: a.is_correct, manager_verdict: a.manager_verdict,
+    };
   });
 
   fetch(QUIZ_RESULT_ENDPOINT, {
@@ -590,7 +597,7 @@ function sendResultEmail(token) {
       total_count: token.total_count,
       duration_seconds: token.duration_seconds,
       timestamp: token.timestamp,
-      answers: answersForEmail,
+      answers: answersForStorage,
     }),
   }).catch(() => {}); // сетевая ошибка не должна ломать показ результата сотруднику
 }
@@ -647,7 +654,7 @@ function renderManagerResult() {
   document.getElementById('mResultMeta').innerHTML = `
     <div class="row"><span class="k">ФИО</span><b>${escapeHtml(token.full_name)}</b></div>
     <div class="row"><span class="k">Должность</span><b>${escapeHtml(POSITION_LABELS[token.position] || token.position)}</b></div>
-    <div class="row"><span class="k">Раздел</span><b>${escapeHtml(token.section)}</b></div>
+    <div class="row"><span class="k">Раздел</span><b>${escapeHtml(token.test_name)}</b></div>
     <div class="row"><span class="k">Дата</span><b>${dateStr}</b></div>
     <div class="row"><span class="k">Длительность</span><b>${minutes} мин ${seconds} сек</b></div>
   `;
