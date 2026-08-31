@@ -3,22 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Тестирование сотрудников</title>
+<meta http-equiv="refresh" content="0; url=/quiz.html">
+<title>Тестирование сотрудников — Автоскан</title>
+<script>location.replace('/quiz.html');</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700&display=swap');
-:root { --blue: #1a56a0; --border: #d0dcea; --muted: #6b7f9a; --text: #1a2a4a; --green: #1e9e52; }
+:root { --blue: #1a56a0; --border: #d0dcea; --muted: #6b7f9a; --text: #1a2a4a; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: stretch; }
+body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: stretch; color: var(--text); }
 .site-header { display: flex; justify-content: flex-start; }
 .site-header img { width: 1024px; max-width: 100%; display: block; }
-.site-footer { display: flex; justify-content: flex-end; }
-.site-footer img { width: 1024px; max-width: 100%; display: block; }
-.main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 32px 48px; gap: 24px; text-align: center; }
-.panel-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1.4px; }
-.headline { font-size: 24px; font-weight: 700; color: var(--text); max-width: 520px; }
-.subtext { font-size: 15px; color: var(--muted); max-width: 480px; line-height: 1.5; }
-.badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; background: #f4f7fb; border: 1.5px solid var(--border); font-size: 13px; font-weight: 700; color: var(--green); letter-spacing: .3px; }
-.badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+.main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 32px; gap: 10px; text-align: center; }
+.subtext { font-size: 14px; color: var(--muted); }
+.subtext a { color: var(--blue); }
 </style>
 </head>
 <body>
@@ -26,13 +23,8 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 <div class="site-header"><img src="header.jpg" alt="АвтоСкан"></div>
 
 <div class="main">
-  <span class="badge">В разработке</span>
-  <div class="panel-title">Тестирование сотрудников</div>
-  <div class="headline">Раздел находится в разработке и будет доступен совсем скоро</div>
-  <div class="subtext">Мы готовим модуль тестирования для сотрудников «Автоскан». Загляните сюда чуть позже.</div>
+  <div class="subtext">Переходим к тестированию… Если этого не произошло — <a href="/quiz.html">нажмите сюда</a>.</div>
 </div>
-
-<div class="site-footer"><img src="footer.jpg" alt="АвтоСкан"></div>
 
 </body>
 </html>

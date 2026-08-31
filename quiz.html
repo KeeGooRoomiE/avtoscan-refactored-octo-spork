@@ -154,9 +154,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
     <div class="field-label">Фамилия и Имя</div>
     <input class="field-input" id="fullNameInput" type="text" placeholder="Иванов Иван" oninput="onStartFormChange()">
 
-    <div class="field-label">Должность</div>
+    <div class="field-label">Отдел</div>
     <select class="field-input" id="positionSelect" onchange="onPositionChange()">
-      <option value="">Выберите должность</option>
+      <option value="">Выберите отдел</option>
     </select>
 
     <div class="field-label">Раздел тестирования</div>
@@ -281,7 +281,7 @@ let cleverBoy = 'https://base.avtoscan42.ru:26502/api/quiz-data/questions';
 // ---------- инициализация ----------
 
 document.getElementById('positionSelect').innerHTML =
-  '<option value="">Выберите должность</option>' +
+  '<option value="">Выберите отдел</option>' +
   POSITIONS.map(p => `<option value="${p.value}">${p.label}</option>`).join('');
 
 (async function init() {
@@ -619,7 +619,7 @@ function showResult(token) {
 
   document.getElementById('resultMeta').innerHTML = `
     <div class="row"><span class="k">ФИО</span><b>${escapeHtml(token.full_name)}</b></div>
-    <div class="row"><span class="k">Должность</span><b>${escapeHtml(POSITION_LABELS[token.position] || token.position)}</b></div>
+    <div class="row"><span class="k">Отдел</span><b>${escapeHtml(POSITION_LABELS[token.position] || token.position)}</b></div>
     <div class="row"><span class="k">Раздел</span><b>${escapeHtml(token.section)}</b></div>
     <div class="row"><span class="k">Дата</span><b>${dateStr}</b></div>
     <div class="row"><span class="k">Длительность</span><b>${minutes} мин ${seconds} сек</b></div>
@@ -653,7 +653,7 @@ function renderManagerResult() {
 
   document.getElementById('mResultMeta').innerHTML = `
     <div class="row"><span class="k">ФИО</span><b>${escapeHtml(token.full_name)}</b></div>
-    <div class="row"><span class="k">Должность</span><b>${escapeHtml(POSITION_LABELS[token.position] || token.position)}</b></div>
+    <div class="row"><span class="k">Отдел</span><b>${escapeHtml(POSITION_LABELS[token.position] || token.position)}</b></div>
     <div class="row"><span class="k">Раздел</span><b>${escapeHtml(token.test_name)}</b></div>
     <div class="row"><span class="k">Дата</span><b>${dateStr}</b></div>
     <div class="row"><span class="k">Длительность</span><b>${minutes} мин ${seconds} сек</b></div>
