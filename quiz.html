@@ -161,7 +161,7 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
     <div class="field-label">Раздел тестирования</div>
     <select class="field-input" id="sectionSelect" onchange="onStartFormChange()" disabled>
-      <option value="">Сначала выберите должность</option>
+      <option value="">Сначала выберите отдел</option>
     </select>
 
     <div class="field-label" id="managerLabel" style="display:none;">Кому отправить результат</div>
@@ -315,7 +315,7 @@ function onPositionChange() {
   const position = document.getElementById('positionSelect').value;
   const sectionSelect = document.getElementById('sectionSelect');
   if (!position) {
-    sectionSelect.innerHTML = '<option value="">Сначала выберите должность</option>';
+    sectionSelect.innerHTML = '<option value="">Сначала выберите отдел</option>';
     sectionSelect.disabled = true;
     selectedManager = null;
     document.getElementById('managerList').innerHTML = '';
