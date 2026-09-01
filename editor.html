@@ -87,8 +87,19 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 .back-link { align-self: flex-start; border: none; background: none; color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 0; }
 .back-link:hover { text-decoration: underline; }
+.active-test-heading-row { display: flex; align-items: center; gap: 6px; }
 .active-test-heading { font-size: 17px; font-weight: 700; color: var(--text); }
 .active-test-sub { font-size: 12px; color: var(--muted); margin-top: -14px; }
+
+/* --- группы вопросов по категориям (спойлеры) --- */
+.q-cat-group { border: 1.5px solid var(--border); border-radius: 12px; background: #fafcff; }
+.q-cat-summary { cursor: pointer; padding: 13px 16px; font-size: 13px; font-weight: 700; color: var(--text); list-style: none; display: flex; align-items: center; justify-content: space-between; user-select: none; border-radius: 12px; }
+.q-cat-summary::-webkit-details-marker { display: none; }
+.q-cat-summary::after { content: '▾'; color: var(--muted); font-size: 11px; transition: transform .15s; flex-shrink: 0; margin-left: 10px; }
+.q-cat-group[open] .q-cat-summary { border-radius: 12px 12px 0 0; border-bottom: 1px dashed var(--border); }
+.q-cat-group[open] .q-cat-summary::after { transform: rotate(180deg); }
+.q-cat-summary:hover { background: #f4f7fb; }
+.q-cat-list { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 
 /* --- карточки вопросов --- */
 .q-card { background: #fff; border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
@@ -116,7 +127,7 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .q-add-option { align-self: flex-start; margin-top: 4px; font-size: 12.5px; padding: 4px 2px; border: none; background: none; color: var(--blue); cursor: pointer; }
 .q-add-option:hover { text-decoration: underline; }
 
-.q-free-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); }
+.q-free-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); resize: none; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -217,12 +228,14 @@ const ICON_TRASH = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" 
 const ICON_PENCIL = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 3.4a1.6 1.6 0 0 1 2.3 2.3L6.8 14.6l-3.4.7.7-3.4 9.3-9.5z"/></svg>';
 const ICON_CHECK = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
 const ICON_X = '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l10 10M15 5L5 15"/></svg>';
+const ICON_DOWNLOAD = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9m0 0l-3.5-3.5M10 12l3.5-3.5M4 14v1.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>';
 
 let originalById = new Map();       // id -> plain question snapshot (как загружено из репозитория)
 let working = [];                   // рабочие вопросы: канонические поля + _isNew / _deleted / _expanded
 let originalTestsById = new Map();  // id -> plain test snapshot
 let workingTests = [];              // рабочие тесты: {id, position, name} + _isNew / _deleted
 let activeTestId = null;            // null = список тестов, иначе — редактируем вопросы этого теста
+let openCategoryGroups = new Set(); // какие спойлеры категорий раскрыты в текущем открытом тесте (сбрасывается при переходе к другому тесту)
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -385,6 +398,50 @@ function renderTestList() {
   updatePublishState();
 }
 
+// ---------- выгрузка вопросов теста в человекочитаемый txt ----------
+
+function buildTestExportText(t, questions) {
+  const posLabel = (POSITIONS.find(p => p.value === t.position) || {}).label || t.position || '—';
+  const lines = [];
+  lines.push(`Тест: ${t.name || '(без названия)'}`);
+  lines.push(`Должность: ${posLabel}`);
+  lines.push(`Вопросов в банке: ${questions.length}`);
+  lines.push('');
+
+  questions.forEach((q, i) => {
+    const catTag = q.category ? `[${q.category}] ` : '';
+    const typeLabel = (TYPES.find(tp => tp.value === q.type) || {}).label || q.type;
+    lines.push(`${i + 1}. ${catTag}${q.text || '(без текста)'}`);
+    lines.push(`   Тип: ${typeLabel}`);
+    if (q.type === 'free') {
+      lines.push(`   Эталонный ответ: ${q.answer_reference || '(не указан)'}`);
+    } else {
+      (q.options || []).forEach((opt, oi) => {
+        const isCorrect = (q.correct || []).includes(oi);
+        lines.push(`   ${isCorrect ? '✓' : '-'} ${opt}${isCorrect ? ' (правильный)' : ''}`);
+      });
+    }
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function downloadTextFile(filename, content) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = mkEl('a', { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportTestToTxt(t) {
+  const questions = working.filter(q => q.test_id === t.id && !q._deleted);
+  downloadTextFile(`${slugify(t.name)}.txt`, buildTestExportText(t, questions));
+}
+
 function buildTestCard(t, idx) {
   const card = mkEl('div', { class: 'test-card' + (t._deleted ? ' deleted' : '') });
 
@@ -397,6 +454,11 @@ function buildTestCard(t, idx) {
   nameInput.value = t.name || '';
   nameInput.oninput = () => { t.name = nameInput.value; revalidateTest(idx); };
   titleRow.appendChild(nameInput);
+
+  const exportBtn = mkEl('button', { class: 'icon-btn', title: 'Выгрузить вопросы теста в txt' });
+  exportBtn.innerHTML = ICON_DOWNLOAD;
+  exportBtn.onclick = () => exportTestToTxt(t);
+  titleRow.appendChild(exportBtn);
 
   const delBtn = mkEl('button', { class: 'icon-btn delete', title: t._deleted ? 'Восстановить тест' : 'Удалить тест' });
   delBtn.innerHTML = ICON_TRASH;
@@ -497,7 +559,7 @@ function buildTestCard(t, idx) {
 
   const openBtn = mkEl('button', { class: 'test-open-btn' });
   openBtn.textContent = 'Редактировать вопросы →';
-  openBtn.onclick = () => { activeTestId = t.id; render(); };
+  openBtn.onclick = () => { activeTestId = t.id; openCategoryGroups = new Set(); render(); };
   card.appendChild(openBtn);
 
   return card;
@@ -521,6 +583,7 @@ function addQuestion() {
     _deleted: false,
     _expanded: true,
   });
+  openCategoryGroups.add('__none__'); // новый вопрос без категории — раскрываем эту группу, чтобы его сразу было видно
   render();
 }
 
@@ -564,9 +627,17 @@ function renderQuestionsForActiveTest() {
   backBtn.onclick = () => { activeTestId = null; render(); };
   el.appendChild(backBtn);
 
+  const headingRow = mkEl('div', { class: 'active-test-heading-row' });
   const heading = mkEl('div', { class: 'active-test-heading' });
   heading.textContent = t ? (t.name || '(без названия)') : '(тест не найден)';
-  el.appendChild(heading);
+  headingRow.appendChild(heading);
+  if (t) {
+    const exportBtn = mkEl('button', { class: 'icon-btn', title: 'Выгрузить вопросы теста в txt' });
+    exportBtn.innerHTML = ICON_DOWNLOAD;
+    exportBtn.onclick = () => exportTestToTxt(t);
+    headingRow.appendChild(exportBtn);
+  }
+  el.appendChild(headingRow);
 
   if (t) {
     const sub = mkEl('div', { class: 'active-test-sub' });
@@ -579,8 +650,35 @@ function renderQuestionsForActiveTest() {
     el.appendChild(addBtn);
   }
 
+  // группировка по категориям (фиксированный список + «Без категории» последней), каждая — спойлер
+  const groupedIdx = new Map(); // категория|null -> [idx, ...]
   working.forEach((q, idx) => {
-    if (q.test_id === activeTestId) el.appendChild(buildCard(q, idx));
+    if (q.test_id !== activeTestId) return;
+    const key = q.category || null;
+    if (!groupedIdx.has(key)) groupedIdx.set(key, []);
+    groupedIdx.get(key).push(idx);
+  });
+
+  [...CATEGORIES, null].forEach(cat => {
+    const idxs = groupedIdx.get(cat);
+    if (!idxs || idxs.length === 0) return;
+    const key = cat || '__none__';
+
+    const details = mkEl('details', { class: 'q-cat-group' });
+    if (openCategoryGroups.has(key)) details.setAttribute('open', '');
+    details.addEventListener('toggle', () => {
+      if (details.open) openCategoryGroups.add(key); else openCategoryGroups.delete(key);
+    });
+
+    const summary = mkEl('summary', { class: 'q-cat-summary' });
+    summary.textContent = `${cat || 'Без категории'} (${idxs.length})`;
+    details.appendChild(summary);
+
+    const list = mkEl('div', { class: 'q-cat-list' });
+    idxs.forEach(idx => list.appendChild(buildCard(working[idx], idx)));
+    details.appendChild(list);
+
+    el.appendChild(details);
   });
 
   working.forEach((q, idx) => { if (q.test_id === activeTestId) revalidate(idx); });
@@ -644,7 +742,12 @@ function buildEditBlock(q, idx) {
     if (q.category === c) opt.selected = true;
     catSelect.appendChild(opt);
   });
-  catSelect.onchange = () => { q.category = catSelect.value || null; };
+  catSelect.onchange = () => {
+    q.category = catSelect.value || null;
+    // категория поменялась — карточка переезжает в другую группу-спойлер, раскрываем её, чтобы вопрос не «пропал»
+    openCategoryGroups.add(q.category || '__none__');
+    render();
+  };
   block.appendChild(catSelect);
 
   const typeSel = mkEl('select', { class: 'q-type-select' });
@@ -673,10 +776,12 @@ function renderTypeBody(q, idx, container) {
   container.innerHTML = '';
 
   if (q.type === 'free') {
-    const input = mkEl('input', { type: 'text', class: 'q-free-input', placeholder: 'Пример ответа (необязательно, для проверяющего)' });
+    const input = mkEl('textarea', { class: 'q-free-input', rows: '1', placeholder: 'Пример ответа (необязательно, для проверяющего)' });
     input.value = q.answer_reference || '';
-    input.oninput = () => { q.answer_reference = input.value; revalidate(idx); };
+    const autoGrowFree = () => { input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px'; };
+    input.oninput = () => { q.answer_reference = input.value; revalidate(idx); autoGrowFree(); };
     container.appendChild(input);
+    requestAnimationFrame(autoGrowFree);
     return;
   }
 
