@@ -708,6 +708,12 @@ function buildCard(q, idx) {
     editBlock.style.display = q._expanded ? 'flex' : 'none';
     editBtn.innerHTML = q._expanded ? ICON_CHECK : ICON_PENCIL;
     editBtn.classList.toggle('done', q._expanded);
+    // пока editBlock скрыт (display:none), scrollHeight поля свободного ответа всегда 0 —
+    // при первом раскрытии карточки пересчитываем высоту заново, теперь уже видимую
+    if (q._expanded) {
+      const freeInput = editBlock.querySelector('.q-free-input');
+      if (freeInput) { freeInput.style.height = 'auto'; freeInput.style.height = freeInput.scrollHeight + 'px'; }
+    }
   };
   titleRow.appendChild(editBtn);
 
