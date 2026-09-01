@@ -709,10 +709,17 @@ function buildCard(q, idx) {
     editBtn.innerHTML = q._expanded ? ICON_CHECK : ICON_PENCIL;
     editBtn.classList.toggle('done', q._expanded);
     // пока editBlock скрыт (display:none), scrollHeight поля свободного ответа всегда 0 —
-    // при первом раскрытии карточки пересчитываем высоту заново, теперь уже видимую
+    // при первом раскрытии карточки пересчитываем высоту заново, теперь уже видимую.
+    // requestAnimationFrame — та же особенность, что и с автовысотой q-title-input выше:
+    // синхронный замер сразу после смены display даёт неверный (завышенный) scrollHeight.
     if (q._expanded) {
       const freeInput = editBlock.querySelector('.q-free-input');
-      if (freeInput) { freeInput.style.height = 'auto'; freeInput.style.height = freeInput.scrollHeight + 'px'; }
+      if (freeInput) {
+        requestAnimationFrame(() => {
+          freeInput.style.height = 'auto';
+          freeInput.style.height = freeInput.scrollHeight + 'px';
+        });
+      }
     }
   };
   titleRow.appendChild(editBtn);
