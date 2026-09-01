@@ -389,7 +389,7 @@ function startQuiz() {
   const test = TESTS.find(t => t.id === testId);
   const hasCategories = pool.some(q => q.category);
   if (hasCategories) {
-    selectedQuestions = pickByCategoriesWithFallbackAll(pool, (test && test.category_counts) || {});
+    selectedQuestions = pickByCategoryCounts(pool, (test && test.category_counts) || {}, test && test.uncategorized_count);
   } else {
     const targetCount = (test && test.question_count > 0) ? test.question_count : DEFAULT_QUESTION_COUNT;
     selectedQuestions = shuffle(pool.slice()).slice(0, Math.min(targetCount, pool.length));
@@ -414,22 +414,24 @@ function shuffle(arr) {
 }
 
 // Если в пуле вопросов есть хоть одна категория — работаем строго по категориям: для каждой
-// категории берём либо точное количество из test.category_counts, либо (если для категории
-// не задано число или задан 0) — вообще все вопросы этой категории целиком. Общий «плоский»
-// счётчик (question_count) в этом режиме не участвует совсем — см. правку от 30.08.2026.
-function pickByCategoriesWithFallbackAll(pool, categoryCounts) {
+// категории берём ровно столько, сколько задано в test.category_counts; не задано или 0 —
+// значит вообще ни одного из этой категории (то же для вопросов без category — отдельное поле
+// test.uncategorized_count, той же семантики). Раньше 0/пусто означало «взять все», это путало —
+// сменили на буквальный 0 по правке от 01.09.2026. Общий «плоский» счётчик (question_count)
+// в этом режиме не участвует совсем.
+function pickByCategoryCounts(pool, categoryCounts, uncategorizedCount) {
   const groups = new Map();
   pool.forEach(q => {
-    const key = q.category || 'Без категории';
+    const key = q.category || null; // null = без категории, считается через uncategorizedCount
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(q);
   });
 
   const picked = [];
-  groups.forEach((arr, cat) => {
+  groups.forEach((arr, key) => {
     shuffle(arr);
-    const n = categoryCounts[cat];
-    picked.push(...(n > 0 ? arr.slice(0, n) : arr));
+    const n = key === null ? uncategorizedCount : categoryCounts[key];
+    if (n > 0) picked.push(...arr.slice(0, n));
   });
   return shuffle(picked);
 }
@@ -520,7 +522,7 @@ async function finishQuiz() {
   const detailedAnswers = selectedQuestions.map((q, i) => {
     const given = answers[i].given;
     if (q.type === 'free') {
-      return { question_id: q.id, text: q.text, type: q.type, given, correct: null, is_correct: null, manager_verdict: null };
+      return { question_id: q.id, text: q.text, type: q.type, given, correct: null, is_correct: null, manager_verdict: null, answer_reference: q.answer_reference || null };
     }
     const correct = q.correct || [];
     const isCorrect = given.length === correct.length && given.slice().sort().every((v, idx) => v === correct.slice().sort()[idx]);
@@ -576,6 +578,7 @@ function sendResultEmail(token) {
       question_id: a.question_id, text: a.text, type: a.type,
       given: a.given, options: a.options, correct: a.correct,
       given_text: givenText, is_correct: a.is_correct, manager_verdict: a.manager_verdict,
+      answer_reference: a.answer_reference || null,
     };
   });
 
@@ -675,14 +678,18 @@ function renderManagerResult() {
     div.className = 'bd-item ' + cls;
     let answerHtml;
     if (a.type === 'free') {
-      answerHtml = `<div class="bd-a">Ответ: <b>${escapeHtml(a.given[0] || '—')}</b></div>
+      const refText = a.answer_reference ? escapeHtml(a.answer_reference) : '<i>не указан</i>';
+      answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(a.given[0] || '—')}</b></div>
+        <div class="bd-a">Эталонный ответ: <b>${refText}</b></div>
         <div class="verdict-row">
           <button class="verdict-btn ok${a.manager_verdict === true ? ' active' : ''}" onclick="setVerdict(${i}, true)">Верно</button>
           <button class="verdict-btn no${a.manager_verdict === false ? ' active' : ''}" onclick="setVerdict(${i}, false)">Неверно</button>
         </div>`;
     } else {
       const givenText = a.given.length ? a.given.map(gi => a.options[gi]).join(', ') : '—';
-      answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(givenText)}</b></div>`;
+      const correctText = (a.correct || []).length ? a.correct.map(ci => a.options[ci]).join(', ') : '—';
+      answerHtml = `<div class="bd-a">Ответ сотрудника: <b>${escapeHtml(givenText)}</b></div>
+        <div class="bd-a">Правильный ответ: <b>${escapeHtml(correctText)}</b></div>`;
     }
     div.innerHTML = `${tag}<div class="bd-q">${i + 1}. ${escapeHtml(a.text)}</div>${answerHtml}`;
     bd.appendChild(div);

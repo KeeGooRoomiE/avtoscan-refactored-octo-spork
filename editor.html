@@ -515,7 +515,7 @@ function buildTestCard(t, idx) {
 
     const ccWrap = mkEl('div', { class: 'test-catcounts' });
     const ccLabel = mkEl('div', { class: 'test-catcounts-label' });
-    ccLabel.textContent = 'Сколько вопросов брать по каждой категории (пусто или 0 = взять все вопросы категории):';
+    ccLabel.textContent = 'Сколько вопросов брать по каждой категории (пусто или 0 = ни одного из этой категории):';
     ccWrap.appendChild(ccLabel);
 
     const totalEl = mkEl('div', { class: 'test-catcounts-total' });
@@ -524,9 +524,11 @@ function buildTestCard(t, idx) {
       categoriesInTest.forEach(cat => {
         const available = working.filter(q => q.test_id === t.id && !q._deleted && q.category === cat).length;
         const n = t.category_counts[cat];
-        sum += (n > 0 ? Math.min(n, available) : available);
+        sum += (n > 0 ? Math.min(n, available) : 0);
       });
-      sum += uncategorizedCount; // вопросы без категории в этом пуле тоже участвуют в выборке целиком
+      if (uncategorizedCount > 0) {
+        sum += (t.uncategorized_count > 0 ? Math.min(t.uncategorized_count, uncategorizedCount) : 0);
+      }
       totalEl.textContent = `Итого будет выбрано за попытку: ${sum}`;
     };
 
@@ -536,7 +538,7 @@ function buildTestCard(t, idx) {
       const nameSpan = mkEl('span', { class: 'test-catcount-name' });
       nameSpan.textContent = `${cat} (доступно: ${available})`;
       row.appendChild(nameSpan);
-      const input = mkEl('input', { type: 'number', min: '0', class: 'test-catcount-input', placeholder: '0 = все' });
+      const input = mkEl('input', { type: 'number', min: '0', class: 'test-catcount-input', placeholder: '0' });
       input.value = t.category_counts[cat] || '';
       input.oninput = () => {
         const n = parseInt(input.value, 10);
@@ -548,6 +550,25 @@ function buildTestCard(t, idx) {
       row.appendChild(input);
       ccWrap.appendChild(row);
     });
+
+    // «Без категории» — такая же строка, как и обычная категория, с той же семантикой 0/пусто = 0.
+    // Раньше вопросы без категории засчитывались в выборку целиком без всякого контроля — путало.
+    if (uncategorizedCount > 0) {
+      const row = mkEl('div', { class: 'test-catcount-row' });
+      const nameSpan = mkEl('span', { class: 'test-catcount-name' });
+      nameSpan.textContent = `Без категории (доступно: ${uncategorizedCount})`;
+      row.appendChild(nameSpan);
+      const input = mkEl('input', { type: 'number', min: '0', class: 'test-catcount-input', placeholder: '0' });
+      input.value = t.uncategorized_count || '';
+      input.oninput = () => {
+        const n = parseInt(input.value, 10);
+        t.uncategorized_count = (input.value !== '' && n > 0) ? n : null;
+        updateTotal();
+        revalidateTest(idx);
+      };
+      row.appendChild(input);
+      ccWrap.appendChild(row);
+    }
 
     updateTotal();
     ccWrap.appendChild(totalEl);
@@ -859,6 +880,7 @@ function plainTest(t) {
   const base = { id: t.id, position: t.position, name: t.name };
   if (t.question_count) base.question_count = t.question_count;
   if (t.category_counts && Object.keys(t.category_counts).length > 0) base.category_counts = t.category_counts;
+  if (t.uncategorized_count) base.uncategorized_count = t.uncategorized_count;
   return base;
 }
 function plainQuestion(q) {
