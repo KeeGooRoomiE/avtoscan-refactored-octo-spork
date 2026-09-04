@@ -411,6 +411,13 @@ function startQuiz() {
     const targetCount = (test && test.question_count > 0) ? test.question_count : DEFAULT_QUESTION_COUNT;
     selectedQuestions = shuffle(pool.slice()).slice(0, Math.min(targetCount, pool.length));
   }
+  // подстраховка: у теста есть категоризированные вопросы, но по всем категориям стоит 0 (редактор
+  // теперь блокирует публикацию такого теста, но мало ли что уже успело быть опубликовано раньше) —
+  // не показываем сотруднику сломанный «Вопрос 1 из 0», а понятно объясняем, что не так
+  if (selectedQuestions.length === 0) {
+    document.getElementById('startStatus').textContent = 'В этом разделе не настроено ни одного вопроса на попытку — сообщите администратору';
+    return;
+  }
   answers = selectedQuestions.map(() => ({ given: [] }));
   currentIndex = 0;
   quizStartedAt = Date.now();

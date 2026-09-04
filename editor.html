@@ -411,6 +411,27 @@ function validateTest(t) {
   const errors = [];
   if (!t.name || !t.name.trim()) errors.push('нет названия');
   if (!t.position) errors.push('не выбрана должность');
+
+  // 0/пусто у категории теперь значит буквально 0 вопросов оттуда (не «взять все», см. правку
+  // от 01.09.2026) — легко забыть проставить счётчик после того, как у вопроса появилась категория,
+  // и получить тест, который на прохождении выдаёт 0 вопросов. Ловим это здесь, а не постфактум.
+  const categoriesInTest = Array.from(new Set(
+    working.filter(q => q.test_id === t.id && !q._deleted && q.category).map(q => q.category)
+  ));
+  if (categoriesInTest.length > 0) {
+    let total = 0;
+    categoriesInTest.forEach(cat => {
+      const available = working.filter(q => q.test_id === t.id && !q._deleted && q.category === cat).length;
+      const n = (t.category_counts || {})[cat];
+      total += (n > 0 ? Math.min(n, available) : 0);
+    });
+    const uncategorizedAvailable = working.filter(q => q.test_id === t.id && !q._deleted && !q.category).length;
+    if (uncategorizedAvailable > 0 && t.uncategorized_count > 0) {
+      total += Math.min(t.uncategorized_count, uncategorizedAvailable);
+    }
+    if (total === 0) errors.push('по всем категориям стоит 0 — тест будет выдавать пустой вопрос, заполните счётчики ниже');
+  }
+
   return errors;
 }
 
