@@ -93,6 +93,14 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .q-card { background: #f4f7fb; border: 1.5px solid var(--border); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .q-text { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.4; }
 
+/* --- картинка в вопросе (опционально, контейнера нет вообще, если у вопроса нет image) --- */
+.q-image-wrap { display: flex; justify-content: center; }
+.q-image-wrap img { max-width: 100%; max-height: 400px; border-radius: 10px; display: block; }
+.q-image-wrap img.expandable { cursor: zoom-in; }
+.lightbox-overlay { position: fixed; inset: 0; background: rgba(10,18,32,.88); display: none; align-items: center; justify-content: center; z-index: 2000; cursor: zoom-out; padding: 24px; }
+.lightbox-overlay.open { display: flex; }
+.lightbox-overlay img { max-width: 100%; max-height: 100%; border-radius: 8px; display: block; }
+
 .ans-btn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border-radius: 8px; border: 2px solid #e0e6ee; background: #fff; cursor: pointer; transition: all .15s; user-select: none; text-align: left; }
 .ans-circle { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #c0ccd8; background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: border-color .15s, background .15s; }
 .ans-circle.square { border-radius: 5px; }
@@ -181,6 +189,7 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
     <div class="q-card">
       <div class="q-text" id="qText"></div>
+      <div id="qImageArea"></div>
       <div id="qAnswerArea"></div>
     </div>
 
@@ -224,6 +233,10 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 </div>
 
 <div class="site-footer"><img src="footer.jpg" alt="АвтоСкан"></div>
+
+<div class="lightbox-overlay" id="lightboxOverlay" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="">
+</div>
 
 <script>
 const OWNER = 'KeeGooRoomiE';
@@ -472,6 +485,7 @@ function renderQuestion() {
   document.getElementById('quizProgress').textContent = `Вопрос ${currentIndex + 1} из ${selectedQuestions.length}`;
   document.getElementById('progressFill').style.width = ((currentIndex) / selectedQuestions.length * 100) + '%';
   document.getElementById('qText').textContent = q.text;
+  renderQuestionImage(q);
 
   const area = document.getElementById('qAnswerArea');
   area.innerHTML = '';
@@ -507,6 +521,38 @@ function renderQuestion() {
 
   document.getElementById('prevBtn').disabled = currentIndex === 0;
   document.getElementById('nextBtn').textContent = currentIndex === selectedQuestions.length - 1 ? 'Завершить тест' : 'Далее';
+}
+
+// картинка вопроса — опциональна. Нет q.image (старые тесты без этого поля) — контейнера вообще нет в DOM.
+// Клик открывает во весь экран, но только если картинку и так сжали под контейнер (иначе открывать нечего).
+function renderQuestionImage(q) {
+  const wrap = document.getElementById('qImageArea');
+  wrap.innerHTML = '';
+  if (!q.image) return;
+
+  const holder = document.createElement('div');
+  holder.className = 'q-image-wrap';
+  const img = document.createElement('img');
+  img.src = q.image;
+  img.alt = '';
+  img.onload = () => {
+    // реальный размер картинки больше того, что показываем — значит есть смысл открывать в полный размер
+    if (img.naturalWidth > img.clientWidth || img.naturalHeight > 400) {
+      img.classList.add('expandable');
+      img.onclick = () => openLightbox(q.image);
+    }
+  };
+  holder.appendChild(img);
+  wrap.appendChild(holder);
+}
+
+// картинка вопроса на весь экран — клик по фону (или по самой картинке) закрывает обратно
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxOverlay').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightboxOverlay').classList.remove('open');
 }
 
 // шаг назад по вопросам

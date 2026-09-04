@@ -128,6 +128,36 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .q-add-option:hover { text-decoration: underline; }
 
 .q-free-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); resize: none; overflow: hidden; }
+
+/* --- изображение вопроса --- */
+.q-image-row { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.q-image-preview-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+.q-image-preview { max-width: 120px; max-height: 90px; border-radius: 8px; border: 1.5px solid var(--border); display: block; object-fit: cover; }
+.q-image-remove { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1.5px solid var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.q-image-remove:hover { color: #e74c3c; border-color: #f3c7c1; background: #fdf2f2; }
+.q-image-upload-wrap { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
+.q-image-upload-btn { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12.5px; padding: 7px 12px; border-radius: 7px; cursor: pointer; align-self: flex-start; }
+.q-image-upload-btn:hover:not(:disabled) { background: #f4f7fb; }
+.q-image-upload-btn:disabled { cursor: default; color: var(--muted); }
+.q-image-upload-btn svg { display: block; }
+.q-image-upload-btn.spin svg { animation: q-img-spin .8s linear infinite; }
+@keyframes q-img-spin { to { transform: rotate(360deg); } }
+.q-image-progress { width: 100%; max-width: 160px; height: 3px; background: #eef2f7; border-radius: 2px; overflow: hidden; display: none; }
+.q-image-progress.active { display: block; }
+.q-image-progress-fill { height: 100%; width: 0%; background: var(--blue); transition: width .15s; }
+.q-image-progress.ok .q-image-progress-fill { background: var(--green); }
+.q-image-progress.error .q-image-progress-fill { background: #e74c3c; }
+
+/* --- тостер загрузки изображений (новый тип, отдельно от .status-msg) --- */
+.upload-toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
+.upload-toast { display: flex; align-items: center; gap: 10px; background: #fff; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(26,43,74,.16); font-size: 12.5px; color: var(--text); min-width: 220px; max-width: 320px; animation: q-toast-in .18s ease-out; }
+@keyframes q-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.upload-toast-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--muted); }
+.upload-toast-icon.loading svg { animation: q-img-spin .8s linear infinite; }
+.upload-toast-icon.loading { color: var(--blue); }
+.upload-toast-icon.ok { color: var(--green); }
+.upload-toast-icon.error { color: #e74c3c; }
+.upload-toast-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -194,6 +224,8 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 <div class="site-footer"><img src="footer.jpg" alt="АвтоСкан"></div>
 
+<div class="upload-toasts" id="uploadToasts"></div>
+
 <script>
 
   //глобальные настройки под последующий шаблон
@@ -204,6 +236,9 @@ const QUIZ_BASE = 'https://base.avtoscan42.ru:26502';
 const QUIZ_DATA_TESTS_URL = `${QUIZ_BASE}/api/quiz-data/tests`;
 const QUIZ_DATA_QUESTIONS_URL = `${QUIZ_BASE}/api/quiz-data/questions`;
 const QUIZ_DATA_PUBLISH_URL = `${QUIZ_BASE}/api/quiz-data/publish`;
+const QUIZ_IMAGE_UPLOAD_URL = `${QUIZ_BASE}/api/quiz-data/images`;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 // Оба — не настоящие секреты, урезаны до своей ручки, см. wikinest_avtoscan/.claude/brief-quiz-backend-migration.md
 const QUIZ_TOKEN = 'R8E8E3nXZOSPxBg9FfYn0L5HCbbOod0gzmXuixbogpE';       // чтение банка (X-Quiz-Token)
 const EDITOR_API_TOKEN = 'PQBo1MA8lwoCfQV7Et7_dHk4wYAh6P-d1NHaVwOCfYQ'; // публикация (X-Editor-Token)
@@ -232,6 +267,7 @@ const ICON_DOWNLOAD = '<svg viewBox="0 0 20 20" width="16" height="16" fill="non
 // картинка к вопросу (пока только иконки — сам аплоад/превью будет отдельным шагом)
 const ICON_IMAGE = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.3" r="1.2"/><path d="M3 13.3l4-4 3.5 3.5L14.5 9l2.5 2.5"/></svg>';
 const ICON_IMAGE_REMOVE = ICON_X; // тот же крестик, что уже используется для удаления варианта ответа
+const ICON_SPINNER = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 3a7 7 0 1 1-7 7" opacity="0.85"/></svg>';
 
 let originalById = new Map();       // id -> plain question snapshot (как загружено из репозитория)
 let working = [];                   // рабочие вопросы: канонические поля + _isNew / _deleted / _expanded
@@ -838,7 +874,145 @@ function buildEditBlock(q, idx) {
   block.appendChild(bodyContainer);
   renderTypeBody(q, idx, bodyContainer);
 
+  block.appendChild(buildImageRow(q));
+
   return block;
+}
+
+// показывает тостер загрузки картинки — сам решает, когда себя убрать; возвращает {ok, error(msg)} чтобы вызывающий код сообщил результат
+function showUploadToast(filename) {
+  const container = document.getElementById('uploadToasts');
+  const toast = mkEl('div', { class: 'upload-toast' });
+  const icon = mkEl('span', { class: 'upload-toast-icon loading' });
+  icon.innerHTML = ICON_SPINNER;
+  const name = mkEl('span', { class: 'upload-toast-name' });
+  name.textContent = filename;
+  toast.appendChild(icon);
+  toast.appendChild(name);
+  container.appendChild(toast);
+  return {
+    ok() {
+      icon.className = 'upload-toast-icon ok';
+      icon.innerHTML = ICON_CHECK;
+      setTimeout(() => toast.remove(), 3000);
+    },
+    error(msg) {
+      icon.className = 'upload-toast-icon error';
+      icon.innerHTML = ICON_X;
+      if (msg) name.textContent = `${filename} — ${msg}`;
+      setTimeout(() => toast.remove(), 5000);
+    },
+  };
+}
+
+// собственно отправка файла на бэкенд через XHR (не fetch — нужен onprogress для процента загрузки)
+function uploadQuestionImage(file, { onProgress, onDone }) {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    onDone(new Error('неверный формат (только JPG/PNG/WebP)'));
+    return;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    onDone(new Error('файл больше 5 МБ'));
+    return;
+  }
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', QUIZ_IMAGE_UPLOAD_URL);
+  xhr.setRequestHeader('X-Editor-Token', EDITOR_API_TOKEN);
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+  };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      try {
+        onDone(null, JSON.parse(xhr.responseText).url);
+      } catch (e) {
+        onDone(new Error('битый ответ сервера'));
+      }
+    } else {
+      let msg = `ошибка ${xhr.status}`;
+      try { msg = JSON.parse(xhr.responseText).error || msg; } catch (e) { /* тело не JSON — оставляем msg как есть */ }
+      onDone(new Error(msg));
+    }
+  };
+  xhr.onerror = () => onDone(new Error('ошибка сети'));
+  const formData = new FormData();
+  formData.append('file', file);
+  xhr.send(formData);
+}
+
+// блок картинки внутри редактирования вопроса: превью+крестик (если уже загружена) + кнопка загрузки/замены.
+// сама себя перерисовывает после каждого действия — не завязана на общий render(), чтобы не терять фокус/скролл ради одной картинки
+function buildImageRow(q) {
+  const row = mkEl('div', { class: 'q-image-row' });
+
+  function paint() {
+    row.innerHTML = '';
+
+    if (q.image) {
+      const wrap = mkEl('span', { class: 'q-image-preview-wrap' });
+      const img = mkEl('img', { class: 'q-image-preview', src: q.image, alt: '' });
+      wrap.appendChild(img);
+      const rmBtn = mkEl('button', { class: 'q-image-remove', type: 'button', title: 'Убрать изображение' });
+      rmBtn.innerHTML = ICON_IMAGE_REMOVE;
+      rmBtn.onclick = () => { q.image = null; paint(); };
+      wrap.appendChild(rmBtn);
+      row.appendChild(wrap);
+    }
+
+    const uploadWrap = mkEl('div', { class: 'q-image-upload-wrap' });
+    const uploadBtn = mkEl('button', { class: 'q-image-upload-btn', type: 'button' });
+    uploadBtn.innerHTML = `${ICON_IMAGE}<span>${q.image ? 'Заменить изображение' : 'Загрузить изображение'}</span>`;
+
+    const progress = mkEl('div', { class: 'q-image-progress' });
+    const progressFill = mkEl('div', { class: 'q-image-progress-fill' });
+    progress.appendChild(progressFill);
+
+    const fileInput = mkEl('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
+    fileInput.style.display = 'none';
+    fileInput.onchange = () => {
+      const file = fileInput.files[0];
+      fileInput.value = '';
+      if (!file) return;
+
+      uploadBtn.disabled = true;
+      uploadBtn.classList.add('spin');
+      uploadBtn.innerHTML = ICON_SPINNER;
+      progress.className = 'q-image-progress active';
+      progressFill.style.width = '0%';
+
+      const toast = showUploadToast(file.name);
+
+      uploadQuestionImage(file, {
+        onProgress: (pct) => { progressFill.style.width = pct + '%'; },
+        onDone: (err, url) => {
+          uploadBtn.classList.remove('spin');
+          if (err) {
+            uploadBtn.innerHTML = ICON_X;
+            progress.classList.add('error');
+            progressFill.style.width = '100%';
+            toast.error(err.message);
+            setTimeout(paint, 1200); // подержать крестик на виду секунду-другую, потом вернуть обычную кнопку
+          } else {
+            uploadBtn.innerHTML = ICON_CHECK;
+            progress.classList.add('ok');
+            progressFill.style.width = '100%';
+            toast.ok();
+            q.image = url;
+            setTimeout(paint, 900);
+          }
+        },
+      });
+    };
+    uploadBtn.onclick = () => fileInput.click();
+
+    uploadWrap.appendChild(uploadBtn);
+    uploadWrap.appendChild(progress);
+    uploadWrap.appendChild(fileInput);
+    row.appendChild(uploadWrap);
+  }
+
+  paint();
+  return row;
 }
 
 // перерисовывает только тело под тип вопроса (варианты или textarea свободного ответа) при смене типа
@@ -925,6 +1099,7 @@ function plainTest(t) {
 function plainQuestion(q) {
   const base = { id: q.id, test_id: q.test_id, type: q.type, text: q.text };
   if (q.category) base.category = q.category;
+  if (q.image) base.image = q.image;
   if (q.type === 'free') {
     if (q.answer_reference) base.answer_reference = q.answer_reference;
   } else {
