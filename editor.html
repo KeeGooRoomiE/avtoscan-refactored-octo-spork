@@ -129,35 +129,32 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 
 .q-free-input { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px; font-family: inherit; font-size: 13px; background: #fafcff; color: var(--text); resize: none; overflow: hidden; }
 
-/* --- изображение вопроса --- */
-.q-image-row { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+/* --- изображение вопроса: превью в раскрытом блоке, сама кнопка загрузки — в шапке карточки (icon-btn) --- */
+.q-image-preview-row { display: flex; }
 .q-image-preview-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
 .q-image-preview { max-width: 120px; max-height: 90px; border-radius: 8px; border: 1.5px solid var(--border); display: block; object-fit: cover; }
 .q-image-remove { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 1.5px solid var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .q-image-remove:hover { color: #e74c3c; border-color: #f3c7c1; background: #fdf2f2; }
-.q-image-upload-wrap { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
-.q-image-upload-btn { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12.5px; padding: 7px 12px; border-radius: 7px; cursor: pointer; align-self: flex-start; }
-.q-image-upload-btn:hover:not(:disabled) { background: #f4f7fb; }
-.q-image-upload-btn:disabled { cursor: default; color: var(--muted); }
-.q-image-upload-btn svg { display: block; }
-.q-image-upload-btn.spin svg { animation: q-img-spin .8s linear infinite; }
+.icon-btn.has-image { color: var(--blue); }
+.icon-btn.spin svg { animation: q-img-spin .8s linear infinite; }
 @keyframes q-img-spin { to { transform: rotate(360deg); } }
-.q-image-progress { width: 100%; max-width: 160px; height: 3px; background: #eef2f7; border-radius: 2px; overflow: hidden; display: none; }
-.q-image-progress.active { display: block; }
-.q-image-progress-fill { height: 100%; width: 0%; background: var(--blue); transition: width .15s; }
-.q-image-progress.ok .q-image-progress-fill { background: var(--green); }
-.q-image-progress.error .q-image-progress-fill { background: #e74c3c; }
 
-/* --- тостер загрузки изображений (новый тип, отдельно от .status-msg) --- */
+/* --- тостер загрузки изображений (новый тип, отдельно от .status-msg) — фиксирован к экрану,
+     не привязан ни к какой карточке вопроса, живёт вне .qlist целиком --- */
 .upload-toasts { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
-.upload-toast { display: flex; align-items: center; gap: 10px; background: #fff; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(26,43,74,.16); font-size: 12.5px; color: var(--text); min-width: 220px; max-width: 320px; animation: q-toast-in .18s ease-out; }
+.upload-toast { display: flex; flex-direction: column; gap: 6px; background: #fff; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(26,43,74,.16); font-size: 12.5px; color: var(--text); min-width: 220px; max-width: 320px; animation: q-toast-in .18s ease-out; }
 @keyframes q-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.upload-toast-row { display: flex; align-items: center; gap: 10px; }
 .upload-toast-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--muted); }
 .upload-toast-icon.loading svg { animation: q-img-spin .8s linear infinite; }
 .upload-toast-icon.loading { color: var(--blue); }
 .upload-toast-icon.ok { color: var(--green); }
 .upload-toast-icon.error { color: #e74c3c; }
 .upload-toast-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-toast-progress { height: 3px; background: #eef2f7; border-radius: 2px; overflow: hidden; }
+.upload-toast-progress-fill { height: 100%; width: 0%; background: var(--blue); transition: width .15s; }
+.upload-toast.ok .upload-toast-progress-fill { background: var(--green); }
+.upload-toast.error .upload-toast-progress-fill { background: #e74c3c; }
 </style>
 </head>
 <body>
@@ -791,6 +788,8 @@ function buildCard(q, idx) {
 
   const editBlock = buildEditBlock(q, idx);
 
+  attachImageUploadButton(titleRow, q, () => { editBlock.refreshImagePreview(); revalidate(idx); });
+
   const editBtn = mkEl('button', { class: 'icon-btn' + (q._expanded ? ' done' : ''), title: 'Редактировать' });
   editBtn.innerHTML = q._expanded ? ICON_CHECK : ICON_PENCIL;
   editBtn.onclick = () => {
@@ -874,31 +873,46 @@ function buildEditBlock(q, idx) {
   block.appendChild(bodyContainer);
   renderTypeBody(q, idx, bodyContainer);
 
-  block.appendChild(buildImageRow(q));
+  const imagePreview = buildImagePreview(q);
+  block.appendChild(imagePreview);
+  block.refreshImagePreview = imagePreview.refresh; // дёргает attachImageUploadButton в buildCard после успешной загрузки
 
   return block;
 }
 
-// показывает тостер загрузки картинки — сам решает, когда себя убрать; возвращает {ok, error(msg)} чтобы вызывающий код сообщил результат
+// показывает тостер загрузки картинки — живёт сам по себе в #uploadToasts (fixed, вне карточки вопроса
+// и вообще вне .qlist), не зависит от того, где на странице сейчас конкретный вопрос и открыт ли он.
+// возвращает {progress(pct), ok(), error(msg)} — вызывающий код дёргает по ходу апдейта XHR
 function showUploadToast(filename) {
   const container = document.getElementById('uploadToasts');
   const toast = mkEl('div', { class: 'upload-toast' });
+  const row = mkEl('div', { class: 'upload-toast-row' });
   const icon = mkEl('span', { class: 'upload-toast-icon loading' });
   icon.innerHTML = ICON_SPINNER;
   const name = mkEl('span', { class: 'upload-toast-name' });
   name.textContent = filename;
-  toast.appendChild(icon);
-  toast.appendChild(name);
+  row.appendChild(icon);
+  row.appendChild(name);
+  const progress = mkEl('div', { class: 'upload-toast-progress' });
+  const fill = mkEl('div', { class: 'upload-toast-progress-fill' });
+  progress.appendChild(fill);
+  toast.appendChild(row);
+  toast.appendChild(progress);
   container.appendChild(toast);
   return {
+    progress(pct) { fill.style.width = pct + '%'; },
     ok() {
       icon.className = 'upload-toast-icon ok';
       icon.innerHTML = ICON_CHECK;
+      toast.classList.add('ok');
+      fill.style.width = '100%';
       setTimeout(() => toast.remove(), 3000);
     },
     error(msg) {
       icon.className = 'upload-toast-icon error';
       icon.innerHTML = ICON_X;
+      toast.classList.add('error');
+      fill.style.width = '100%';
       if (msg) name.textContent = `${filename} — ${msg}`;
       setTimeout(() => toast.remove(), 5000);
     },
@@ -940,79 +954,75 @@ function uploadQuestionImage(file, { onProgress, onDone }) {
   xhr.send(formData);
 }
 
-// блок картинки внутри редактирования вопроса: превью+крестик (если уже загружена) + кнопка загрузки/замены.
-// сама себя перерисовывает после каждого действия — не завязана на общий render(), чтобы не терять фокус/скролл ради одной картинки
-function buildImageRow(q) {
-  const row = mkEl('div', { class: 'q-image-row' });
-
+// превью картинки вопроса (если есть) + крестик для удаления — живёт в раскрытом блоке редактирования.
+// саму загрузку теперь запускают из шапки карточки (attachImageUploadButton ниже), сюда прилетает
+// только готовый q.image, поэтому у элемента есть .refresh() — дёргается извне после успешной загрузки
+function buildImagePreview(q) {
+  const wrap = mkEl('div', { class: 'q-image-preview-row' });
   function paint() {
-    row.innerHTML = '';
-
-    if (q.image) {
-      const wrap = mkEl('span', { class: 'q-image-preview-wrap' });
-      const img = mkEl('img', { class: 'q-image-preview', src: q.image, alt: '' });
-      wrap.appendChild(img);
-      const rmBtn = mkEl('button', { class: 'q-image-remove', type: 'button', title: 'Убрать изображение' });
-      rmBtn.innerHTML = ICON_IMAGE_REMOVE;
-      rmBtn.onclick = () => { q.image = null; paint(); };
-      wrap.appendChild(rmBtn);
-      row.appendChild(wrap);
-    }
-
-    const uploadWrap = mkEl('div', { class: 'q-image-upload-wrap' });
-    const uploadBtn = mkEl('button', { class: 'q-image-upload-btn', type: 'button' });
-    uploadBtn.innerHTML = `${ICON_IMAGE}<span>${q.image ? 'Заменить изображение' : 'Загрузить изображение'}</span>`;
-
-    const progress = mkEl('div', { class: 'q-image-progress' });
-    const progressFill = mkEl('div', { class: 'q-image-progress-fill' });
-    progress.appendChild(progressFill);
-
-    const fileInput = mkEl('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
-    fileInput.style.display = 'none';
-    fileInput.onchange = () => {
-      const file = fileInput.files[0];
-      fileInput.value = '';
-      if (!file) return;
-
-      uploadBtn.disabled = true;
-      uploadBtn.classList.add('spin');
-      uploadBtn.innerHTML = ICON_SPINNER;
-      progress.className = 'q-image-progress active';
-      progressFill.style.width = '0%';
-
-      const toast = showUploadToast(file.name);
-
-      uploadQuestionImage(file, {
-        onProgress: (pct) => { progressFill.style.width = pct + '%'; },
-        onDone: (err, url) => {
-          uploadBtn.classList.remove('spin');
-          if (err) {
-            uploadBtn.innerHTML = ICON_X;
-            progress.classList.add('error');
-            progressFill.style.width = '100%';
-            toast.error(err.message);
-            setTimeout(paint, 1200); // подержать крестик на виду секунду-другую, потом вернуть обычную кнопку
-          } else {
-            uploadBtn.innerHTML = ICON_CHECK;
-            progress.classList.add('ok');
-            progressFill.style.width = '100%';
-            toast.ok();
-            q.image = url;
-            setTimeout(paint, 900);
-          }
-        },
-      });
-    };
-    uploadBtn.onclick = () => fileInput.click();
-
-    uploadWrap.appendChild(uploadBtn);
-    uploadWrap.appendChild(progress);
-    uploadWrap.appendChild(fileInput);
-    row.appendChild(uploadWrap);
+    wrap.innerHTML = '';
+    if (!q.image) return;
+    const previewWrap = mkEl('span', { class: 'q-image-preview-wrap' });
+    const img = mkEl('img', { class: 'q-image-preview', src: q.image, alt: '' });
+    previewWrap.appendChild(img);
+    const rmBtn = mkEl('button', { class: 'q-image-remove', type: 'button', title: 'Убрать изображение' });
+    rmBtn.innerHTML = ICON_IMAGE_REMOVE;
+    rmBtn.onclick = () => { q.image = null; paint(); };
+    previewWrap.appendChild(rmBtn);
+    wrap.appendChild(previewWrap);
   }
-
   paint();
-  return row;
+  wrap.refresh = paint;
+  return wrap;
+}
+
+// компактная иконка загрузки картинки в шапке карточки вопроса — рядом с карандашом/корзиной, а не
+// внизу раскрытого блока. Крутилка -> галочка/крестик прямо на самой иконке; процент загрузки и
+// имя файла — в тостере (showUploadToast), тут для полосы места нет. onUploaded зовём, чтобы вызывающий
+// код (buildCard) обновил превью в уже открытом блоке редактирования, если он есть
+function attachImageUploadButton(titleRow, q, onUploaded) {
+  const btn = mkEl('button', { class: 'icon-btn' + (q.image ? ' has-image' : ''), type: 'button', title: q.image ? 'Заменить изображение' : 'Загрузить изображение' });
+  btn.innerHTML = ICON_IMAGE;
+
+  const fileInput = mkEl('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
+  fileInput.style.display = 'none';
+  fileInput.onchange = () => {
+    const file = fileInput.files[0];
+    fileInput.value = '';
+    if (!file) return;
+
+    btn.disabled = true;
+    btn.classList.add('spin');
+    btn.innerHTML = ICON_SPINNER;
+
+    const toast = showUploadToast(file.name);
+
+    uploadQuestionImage(file, {
+      onProgress: (pct) => toast.progress(pct),
+      onDone: (err, url) => {
+        btn.disabled = false;
+        btn.classList.remove('spin');
+        if (err) {
+          btn.innerHTML = ICON_X;
+          toast.error(err.message);
+        } else {
+          btn.innerHTML = ICON_CHECK;
+          toast.ok();
+          q.image = url;
+          onUploaded();
+        }
+        setTimeout(() => {
+          btn.innerHTML = ICON_IMAGE;
+          btn.title = q.image ? 'Заменить изображение' : 'Загрузить изображение';
+          btn.classList.toggle('has-image', !!q.image);
+        }, err ? 1200 : 900); // подержать крестик/галочку на виду секунду-другую, потом обычная иконка
+      },
+    });
+  };
+  btn.onclick = () => fileInput.click();
+
+  titleRow.appendChild(btn);
+  titleRow.appendChild(fileInput);
 }
 
 // перерисовывает только тело под тип вопроса (варианты или textarea свободного ответа) при смене типа
