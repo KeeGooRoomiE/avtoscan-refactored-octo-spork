@@ -311,6 +311,7 @@ document.getElementById('positionSelect').innerHTML =
 
 // ---------- стартовый экран ----------
 
+// смена отдела — перестроить список разделов теста + список руководителей под него
 function onPositionChange() {
   const position = document.getElementById('positionSelect').value;
   const sectionSelect = document.getElementById('sectionSelect');
@@ -334,6 +335,7 @@ function onPositionChange() {
   onStartFormChange();
 }
 
+// кнопки-руководители, отфильтрованные под выбранную должность
 function renderManagerList(position) {
   selectedManager = null;
   const list = document.getElementById('managerList');
@@ -363,6 +365,7 @@ function renderManagerList(position) {
   });
 }
 
+// включает/выключает кнопку «начать тест» по заполненности формы
 function onStartFormChange() {
   const name = document.getElementById('fullNameInput').value.trim();
   const position = document.getElementById('positionSelect').value;
@@ -377,6 +380,7 @@ function onStartFormChange() {
 //
 //Ты же сюда попадешь из answer = true или answer: 1 или current_answer: 1, ведь так?
 
+// набирает пул вопросов (по категориям либо плоско), запускает таймер, переключает на экран теста
 function startQuiz() {
   const testId = document.getElementById('sectionSelect').value;
 
@@ -405,6 +409,7 @@ function startQuiz() {
   startTimer();
 }
 
+// обычный Фишер-Йейтс, перемешивает массив на месте
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -419,6 +424,7 @@ function shuffle(arr) {
 // test.uncategorized_count, той же семантики). Раньше 0/пусто означало «взять все», это путало —
 // сменили на буквальный 0 по правке от 01.09.2026. Общий «плоский» счётчик (question_count)
 // в этом режиме не участвует совсем.
+// набирает вопросы строго по счётчикам категорий — 0 или не задано значит буквально 0, никакой магии с «взять всё»
 function pickByCategoryCounts(pool, categoryCounts, uncategorizedCount) {
   const groups = new Map();
   pool.forEach(q => {
@@ -438,6 +444,7 @@ function pickByCategoryCounts(pool, categoryCounts, uncategorizedCount) {
 
 // ---------- экран теста ----------
 
+// обратный отсчёт по секундам, вызывает finishQuiz() как только время вышло
 function startTimer() {
   updateTimerDisplay();
   timerHandle = setInterval(() => {
@@ -450,6 +457,7 @@ function startTimer() {
   }, 1000);
 }
 
+// красит таймер в mm:ss, подсвечивает красным на последней минуте
 function updateTimerDisplay() {
   const m = Math.max(0, Math.floor(timerRemaining / 60));
   const s = Math.max(0, timerRemaining % 60);
@@ -458,6 +466,7 @@ function updateTimerDisplay() {
   el.classList.toggle('warn', timerRemaining <= 60);
 }
 
+// рисует текущий вопрос: текст + варианты/textarea + полоска прогресса
 function renderQuestion() {
   const q = selectedQuestions[currentIndex];
   document.getElementById('quizProgress').textContent = `Вопрос ${currentIndex + 1} из ${selectedQuestions.length}`;
@@ -500,12 +509,14 @@ function renderQuestion() {
   document.getElementById('nextBtn').textContent = currentIndex === selectedQuestions.length - 1 ? 'Завершить тест' : 'Далее';
 }
 
+// шаг назад по вопросам
 function goPrev() {
   if (currentIndex === 0) return;
   currentIndex--;
   renderQuestion();
 }
 
+// шаг вперёд, либо finishQuiz() на последнем вопросе
 function goNext() {
   if (currentIndex === selectedQuestions.length - 1) {
     finishQuiz();
@@ -515,6 +526,7 @@ function goNext() {
   renderQuestion();
 }
 
+// считает результат, шлёт на бэкенд (если выбран руководитель), сотруднику показывает только %, никакого разбора
 async function finishQuiz() {
   if (timerHandle) clearInterval(timerHandle);
 
@@ -561,6 +573,7 @@ async function finishQuiz() {
 // ---------- отправка результата руководителю: сохраняет результат на бэкенде под коротким id
 // и шлёт письмо со ссылкой ?r=<id> (неблокирующе, не мешает показу результата сотруднику) ----------
 
+// POST на бэкенд: сохраняет результат + шлёт письмо руководителю. fire-and-forget, ошибка сети никогда не ломает показ результата сотруднику
 function sendResultEmail(token) {
   if (!selectedManager) return;
 
@@ -607,6 +620,7 @@ function sendResultEmail(token) {
 
 // ---------- экран результата сотрудника: только итог, без разбора и без ссылки ----------
 
+// минимальный экран результата сотрудника — только %, без разбора и без ссылки, так и задумано
 function showResult(token) {
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'none';
@@ -631,6 +645,7 @@ function showResult(token) {
 
 // ---------- экран руководителя (?r=<id>): полный разбор, оценка free-ответов с моментальным сохранением ----------
 
+// тянет сохранённый результат с бэкенда по id из ?r=<id> в адресной строке
 async function loadManagerResult(resultId) {
   const res = await fetch(`${QUIZ_BASE}/api/quiz-result/${encodeURIComponent(resultId)}`);
   if (!res.ok) throw new Error('result ' + res.status);
@@ -639,6 +654,7 @@ async function loadManagerResult(resultId) {
   renderManagerResult();
 }
 
+// полный разбор для руководителя: ответ сотрудника + правильный/эталонный ответ + кнопки вердикта
 function renderManagerResult() {
   const token = currentToken;
   document.getElementById('startScreen').style.display = 'none';
@@ -696,6 +712,7 @@ function renderManagerResult() {
   });
 }
 
+// пересчитывает %/correct/total с учётом вердиктов руководителя по free-вопросам
 function recomputeScore(token) {
   let correct = 0, total = 0;
   token.answers.forEach(a => {
@@ -713,6 +730,7 @@ function recomputeScore(token) {
 }
 
 // Каждый клик руководителя сразу пересчитывает % и сохраняет на бэкенд — без отдельной кнопки «сохранить».
+// руководитель жмёт «верно»/«неверно» на free-вопросе — пересчёт на месте + сразу PATCH на бэкенд, без кнопки «сохранить»
 async function setVerdict(i, val) {
   currentToken.answers[i].manager_verdict = currentToken.answers[i].manager_verdict === val ? null : val;
   recomputeScore(currentToken);
@@ -730,6 +748,7 @@ async function setVerdict(i, val) {
   }
 }
 
+// тот же хелпер статус-строки, что и в editor.html
 function setStatus(elId, text, cls) {
   const el = document.getElementById(elId);
   if (!el) return;
@@ -737,6 +756,7 @@ function setStatus(elId, text, cls) {
   el.className = 'status-msg' + (cls ? ' ' + cls : '');
 }
 
+// сброс к стартовому экрану — «пройти ещё раз»
 function restart() {
   document.getElementById('resultScreen').style.display = 'none';
   document.getElementById('startScreen').style.display = 'flex';
@@ -745,6 +765,7 @@ function restart() {
   onPositionChange();
 }
 
+// экранирует пользовательский текст перед вставкой через innerHTML, не забывай про это всюду
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

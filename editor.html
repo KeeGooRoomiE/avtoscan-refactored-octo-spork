@@ -240,11 +240,13 @@ let workingTests = [];              // рабочие тесты: {id, position,
 let activeTestId = null;            // null = список тестов, иначе — редактируем вопросы этого теста
 let openCategoryGroups = new Set(); // какие спойлеры категорий раскрыты в текущем открытом тесте (сбрасывается при переходе к другому тесту)
 
+// хэш пароля через SHA-256 — сверяем с захардкоженным хэшем, сам пароль в код не зашит
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// проверка пароля на входе в редактор
 async function tryUnlock() {
   const statusEl = document.getElementById('lockStatus');
   statusEl.textContent = '';
@@ -263,21 +265,25 @@ async function tryUnlock() {
   afterUnlock();
 }
 
+// раньше тут ещё был экран ввода GitHub PAT — убрали, теперь сразу в редактор
 function afterUnlock() {
   showEditor();
 }
 
+// открыть экран редактора и сразу подтянуть банк с бэкенда
 function showEditor() {
   document.getElementById('editorScreen').style.display = 'flex';
   loadBank();
 }
 
+// общий хелпер: красит текстовую строку статуса в зелёное/красное
 function setStatus(elId, text, cls) {
   const el = document.getElementById(elId);
   el.textContent = text;
   el.className = 'status-msg' + (cls ? ' ' + cls : '');
 }
 
+// тянет tests+questions с бэкенда, раскладывает по working/originalById для будущего diff'а
 async function loadBank() {
   setStatus('mainStatus', 'Загружаю банк…');
   try {
@@ -303,21 +309,26 @@ async function loadBank() {
   }
 }
 
+// название теста -> id-совместимый кусок (латиница/кириллица, пробелы -> дефисы)
 function slugify(s) {
   return (s || 'test').toLowerCase()
     .replace(/[^a-z0-9а-яё]+/gi, '-')
     .replace(/^-+|-+$/g, '') || 'test';
 }
+// 6 случайных hex-символов для уникальности id
 function randHex() {
   return Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+// id вопроса = слаг теста + randHex
 function genId(name) {
   return `${slugify(name)}-${randHex()}`;
 }
+// id теста = test- + randHex
 function genTestId() {
   return `test-${randHex()}`;
 }
 
+// свой мини-jQuery, чтобы не писать createElement+setAttribute на каждый чих
 function mkEl(tag, attrs) {
   const e = document.createElement(tag);
   Object.entries(attrs || {}).forEach(([k, v]) => e.setAttribute(k, v));
@@ -326,6 +337,7 @@ function mkEl(tag, attrs) {
 
 // ---------- маршрутизация: список тестов <-> вопросы конкретного теста ----------
 
+// диспетчер экрана: список тестов или вопросы открытого теста — смотря что в activeTestId
 function render() {
   if (activeTestId === null) renderTestList();
   else renderQuestionsForActiveTest();
@@ -333,11 +345,13 @@ function render() {
 
 // ---------- список тестов ----------
 
+// новый пустой тест в начало списка (только в памяти, ещё не опубликован)
 function addTest() {
   workingTests.unshift({ id: genTestId(), position: '', name: '', _isNew: true, _deleted: false });
   render();
 }
 
+// пометить тест на удаление (или сразу выпилить, если он ещё не опубликован) — тащит за собой все его вопросы
 function toggleTestDeleted(idx) {
   const t = workingTests[idx];
   if (t._isNew) {
@@ -359,6 +373,7 @@ function toggleTestDeleted(idx) {
   render();
 }
 
+// проверки теста для UI: нет названия/должности — ошибка
 function validateTest(t) {
   const errors = [];
   if (!t.name || !t.name.trim()) errors.push('нет названия');
@@ -366,6 +381,7 @@ function validateTest(t) {
   return errors;
 }
 
+// ищет тесты-дубли (одинаковая пара должность+название)
 function findDuplicateTestIds() {
   const seen = new Map();
   const dupIds = new Set();
@@ -377,15 +393,17 @@ function findDuplicateTestIds() {
   return dupIds;
 }
 
+// перегоняет validateTest+дубликаты и красит ошибку под конкретной карточкой
 function revalidateTest(idx) {
   const t = workingTests[idx];
   let errs = t._deleted ? [] : validateTest(t);
-  if (!t._deleted && findDuplicateTestIds().has(t.id)) errs = errs.concat('такой тест для этой должности уже есть');
+  if (!t._deleted && findDuplicateTestIds().has(t.id)) errs = errs.concat('такой тест для этой должности уже есть'); //на случай дубликата
   const errEl = document.querySelector(`[data-test-err-for="${idx}"]`);
   if (errEl) errEl.textContent = errs.length ? '⚠ ' + errs.join(', ') : '';
   updatePublishState();
 }
 
+// рисует список тестов целиком + кнопку «создать тест»
 function renderTestList() {
   const el = document.getElementById('qlist');
   el.innerHTML = '';
@@ -403,6 +421,8 @@ function renderTestList() {
 
 // ---------- выгрузка вопросов теста в человекочитаемый txt ----------
 
+// собирает человекочитаемый txt по тесту: вопрос, варианты, отметка правильного
+// потенциально самая красивая и бесполезная часть, в которой смысла меньше, чем в факте использования вопроса 
 function buildTestExportText(t, questions) {
   const posLabel = (POSITIONS.find(p => p.value === t.position) || {}).label || t.position || '—';
   const lines = [];
@@ -430,6 +450,7 @@ function buildTestExportText(t, questions) {
   return lines.join('\n');
 }
 
+// триггерит скачивание файла через невидимую <a download>, без бэкенда
 function downloadTextFile(filename, content) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -440,11 +461,13 @@ function downloadTextFile(filename, content) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// склеивает buildTestExportText + downloadTextFile для конкретного теста
 function exportTestToTxt(t) {
   const questions = working.filter(q => q.test_id === t.id && !q._deleted);
   downloadTextFile(`${slugify(t.name)}.txt`, buildTestExportText(t, questions));
 }
 
+// ОГРОМНАЯ функция — рисует всю карточку теста целиком (название/должность/счётчики категорий/кнопки). растёт с каждой правкой, извини заранее
 function buildTestCard(t, idx) {
   const card = mkEl('div', { class: 'test-card' + (t._deleted ? ' deleted' : '') });
 
@@ -513,6 +536,7 @@ function buildTestCard(t, idx) {
   }
   card.appendChild(metaRow);
 
+  // наличие категорий
   if (categoriesInTest.length > 0) {
     t.category_counts = t.category_counts || {};
 
@@ -534,7 +558,7 @@ function buildTestCard(t, idx) {
       }
       totalEl.textContent = `Итого будет выбрано за попытку: ${sum}`;
     };
-
+    //формируем категории
     categoriesInTest.forEach(cat => {
       const available = working.filter(q => q.test_id === t.id && !q._deleted && q.category === cat).length;
       const row = mkEl('div', { class: 'test-catcount-row' });
@@ -591,6 +615,7 @@ function buildTestCard(t, idx) {
 
 // ---------- вопросы конкретного теста ----------
 
+// новый пустой вопрос в начало списка вопросов открытого теста
 function addQuestion() {
   if (!activeTestId) return;
   const t = workingTests.find(x => x.id === activeTestId);
@@ -611,6 +636,7 @@ function addQuestion() {
   render();
 }
 
+// то же самое, что toggleTestDeleted, но для вопроса
 function toggleDeleted(idx) {
   const q = working[idx];
   if (q._isNew) {
@@ -621,6 +647,7 @@ function toggleDeleted(idx) {
   render();
 }
 
+// проверки конкретного вопроса: текст, варианты, правильный ответ
 function validateRow(q) {
   const errors = [];
   if (!q.text || !q.text.trim()) errors.push('нет текста вопроса');
@@ -632,6 +659,7 @@ function validateRow(q) {
   return errors;
 }
 
+// то же самое, что revalidateTest, но для вопроса
 function revalidate(idx) {
   const q = working[idx];
   const errs = q._deleted ? [] : validateRow(q);
@@ -640,6 +668,7 @@ function revalidate(idx) {
   updatePublishState();
 }
 
+// рисует вопросы открытого теста, сгруппированные по категориям в спойлеры (details/summary)
 function renderQuestionsForActiveTest() {
   const el = document.getElementById('qlist');
   el.innerHTML = '';
@@ -709,6 +738,7 @@ function renderQuestionsForActiveTest() {
   updatePublishState();
 }
 
+// карточка одного вопроса: заголовок + кнопки + сворачиваемый блок редактирования
 function buildCard(q, idx) {
   const card = mkEl('div', { class: 'q-card' + (q._deleted ? ' deleted' : '') });
 
@@ -760,11 +790,13 @@ function buildCard(q, idx) {
   card.appendChild(err);
 
   // авто-высота текстареи вопроса при первом рендере, почему-то ломалась в самом начале
+  //фикс по количеству контента в нем
   requestAnimationFrame(() => { titleInput.style.height = 'auto'; titleInput.style.height = titleInput.scrollHeight + 'px'; });
 
   return card;
 }
 
+// раскрывающийся блок редактирования конкретного вопроса: категория, тип, варианты
 function buildEditBlock(q, idx) {
   const block = mkEl('div', { class: 'q-edit' });
   block.style.display = q._expanded ? 'flex' : 'none';
@@ -809,6 +841,7 @@ function buildEditBlock(q, idx) {
   return block;
 }
 
+// перерисовывает только тело под тип вопроса (варианты или textarea свободного ответа) при смене типа
 function renderTypeBody(q, idx, container) {
   container.innerHTML = '';
 
@@ -872,6 +905,7 @@ function renderTypeBody(q, idx, container) {
 
 // ---------- публикация ----------
 
+// решает, можно ли жать «опубликовать» — смотрит, нет ли где-нибудь непройденной валидации
 function updatePublishState() {
   const dupTestIds = findDuplicateTestIds();
   const hasTestErrors = workingTests.some(t => !t._deleted && (validateTest(t).length > 0 || dupTestIds.has(t.id)));
@@ -879,6 +913,7 @@ function updatePublishState() {
   document.getElementById('publishBtn').disabled = hasTestErrors || hasQuestionErrors;
 }
 
+// вырезает служебные _isNew/_deleted/т.п. поля перед отправкой на сервер
 function plainTest(t) {
   const base = { id: t.id, position: t.position, name: t.name };
   if (t.question_count) base.question_count = t.question_count;
@@ -886,6 +921,7 @@ function plainTest(t) {
   if (t.uncategorized_count) base.uncategorized_count = t.uncategorized_count;
   return base;
 }
+// то же самое, но для вопроса
 function plainQuestion(q) {
   const base = { id: q.id, test_id: q.test_id, type: q.type, text: q.text };
   if (q.category) base.category = q.category;
@@ -897,10 +933,12 @@ function plainQuestion(q) {
   }
   return base;
 }
+// сравнение в лоб через JSON.stringify — грубо, но для diff'а хватает с головой
 function isEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+// сравнивает working с original и собирает {tests, questions} diff для публикации
 function computeDiff() {
   const testOps = [];
   workingTests.forEach(t => {
@@ -940,6 +978,7 @@ function computeDiff() {
   return { tests: testOps, questions: questionOps };
 }
 
+// отправляет diff на бэкенд синхронно — никакого GitHub Actions, слава богу, спасибо что переехали
 async function publish() {
   const diff = computeDiff();
   const total = diff.tests.length + diff.questions.length;
