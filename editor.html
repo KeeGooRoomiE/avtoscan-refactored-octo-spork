@@ -36,7 +36,9 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .status-msg.error { color: #e74c3c; }
 .status-msg.ok { color: var(--green); }
 
-.toolbar { width: 100%; max-width: 640px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar { width: 100%; max-width: 640px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: sticky; top: 0; z-index: 50; background: #fff; padding: 8px 0; }
+.dirty-badge { font-size: 12px; font-weight: 700; color: #c77a0a; }
+.btn.dirty { box-shadow: 0 0 0 3px rgba(230,150,30,.35); }
 .toolbar .spacer { flex: 1; }
 .toolbar .status-msg { margin: 0; text-align: left; }
 
@@ -84,6 +86,12 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .q-category-input { border: 1.5px solid var(--border); background: #fafcff; color: var(--text); font-family: inherit; font-size: 12.5px; padding: 6px 9px; border-radius: 6px; align-self: flex-start; }
 .test-open-btn { align-self: stretch; text-align: center; padding: 9px; border-radius: 8px; border: 1.5px solid var(--border); background: #f4f7fb; color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; }
 .test-open-btn:hover { background: #eef3fa; }
+.test-actions { display: flex; gap: 8px; align-items: stretch; }
+.test-actions .test-open-btn { flex: 1; }
+.test-save-btn { padding: 9px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: #f4f7fb; color: var(--muted); font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.test-save-btn:disabled { cursor: default; }
+.test-save-btn.dirty:not(:disabled) { background: var(--green); border-color: var(--green); color: #fff; }
+.test-save-btn.dirty:not(:disabled):hover { background: #187e42; }
 
 .back-link { align-self: flex-start; border: none; background: none; color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px 0; }
 .back-link:hover { text-decoration: underline; }
@@ -151,6 +159,8 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
 .upload-toast-icon.ok { color: var(--green); }
 .upload-toast-icon.error { color: #e74c3c; }
 .upload-toast-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upload-toast-name.wrap { white-space: pre-line; overflow: visible; line-height: 1.4; }
+.upload-toast.error { max-width: 380px; border-color: #f3c7c1; }
 .upload-toast-progress { height: 3px; background: #eef2f7; border-radius: 2px; overflow: hidden; }
 .upload-toast-progress-fill { height: 100%; width: 0%; background: var(--blue); transition: width .15s; }
 .upload-toast.ok .upload-toast-progress-fill { background: var(--green); }
@@ -209,10 +219,11 @@ body { font-family: 'Golos Text', sans-serif; background: #fff; min-height: 100v
   <div id="editorScreen" style="display:none; width:100%; flex-direction:column; align-items:center; gap:20px;">
     <div class="toolbar">
       <button class="btn btn-green" id="publishBtn" onclick="publish()" disabled>Опубликовать изменения</button>
+      <div class="dirty-badge" id="dirtyBadge"></div>
       <div class="spacer"></div>
       <div class="status-msg" id="mainStatus"></div>
     </div>
-    <div class="hint">Все изменения происходят локально. Изменения обязательно нужно Опубликовать по завершению — применяются сразу.</div>
+    <div class="hint">Правки живут только на этой странице, пока не нажато «Опубликовать изменения» (всё сразу) или «Сохранить» на карточке теста (только этот тест). Если сохранить не получилось — причина покажется во всплывашке справа внизу.</div>
 
     <div class="qlist" id="qlist"></div>
   </div>
@@ -321,8 +332,8 @@ async function loadBank() {
   setStatus('mainStatus', 'Загружаю банк…');
   try {
     const [testsRes, qRes] = await Promise.all([
-      fetch(QUIZ_DATA_TESTS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN } }),
-      fetch(QUIZ_DATA_QUESTIONS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN } }),
+      fetch(QUIZ_DATA_TESTS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN }, cache: 'no-store' }),
+      fetch(QUIZ_DATA_QUESTIONS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN }, cache: 'no-store' }),
     ]);
     if (!testsRes.ok || !qRes.ok) throw new Error(`бэкенд вернул ${testsRes.status}/${qRes.status}`);
     const tests = await testsRes.json();
@@ -662,7 +673,15 @@ function buildTestCard(t, idx) {
   const openBtn = mkEl('button', { class: 'test-open-btn' });
   openBtn.textContent = 'Редактировать вопросы →';
   openBtn.onclick = () => { activeTestId = t.id; openCategoryGroups = new Set(); render(); };
-  card.appendChild(openBtn);
+  const actions = mkEl('div', { class: 'test-actions' });
+  actions.appendChild(openBtn);
+  // сохранить только этот тест (и его вопросы), не трогая несохранённые правки в остальных — см. publishScoped
+  const saveBtn = mkEl('button', { class: 'test-save-btn', type: 'button', 'data-save-test': t.id });
+  saveBtn.textContent = 'Сохранить';
+  saveBtn.disabled = true;
+  saveBtn.onclick = () => publishTest(t.id);
+  actions.appendChild(saveBtn);
+  card.appendChild(actions);
 
   return card;
 }
@@ -743,6 +762,12 @@ function renderQuestionsForActiveTest() {
     exportBtn.innerHTML = ICON_DOWNLOAD;
     exportBtn.onclick = () => exportTestToTxt(t);
     headingRow.appendChild(exportBtn);
+    const saveBtn = mkEl('button', { class: 'test-save-btn', type: 'button', 'data-save-test': t.id });
+    saveBtn.style.marginLeft = 'auto';
+    saveBtn.textContent = 'Сохранить';
+    saveBtn.disabled = true;
+    saveBtn.onclick = () => publishTest(t.id);
+    headingRow.appendChild(saveBtn);
   }
   el.appendChild(headingRow);
 
@@ -1110,12 +1135,55 @@ function renderTypeBody(q, idx, container) {
 
 // ---------- публикация ----------
 
-// решает, можно ли жать «опубликовать» — смотрит, нет ли где-нибудь непройденной валидации
-function updatePublishState() {
+// ВСЕ проблемы валидации одним списком — по конкретному тесту (onlyTestId) или по всему банку.
+// Раньше кнопка «Опубликовать» молча серела из-за ошибки где-то в другом тесте/вопросе, и было не понять почему
+// «правки не сохраняются» — теперь при попытке сохранить причины называются прямо в тостере
+function collectProblems(onlyTestId) {
+  const problems = [];
   const dupTestIds = findDuplicateTestIds();
-  const hasTestErrors = workingTests.some(t => !t._deleted && (validateTest(t).length > 0 || dupTestIds.has(t.id)));
-  const hasQuestionErrors = working.some(q => !q._deleted && validateRow(q).length > 0);
-  document.getElementById('publishBtn').disabled = hasTestErrors || hasQuestionErrors;
+  workingTests.filter(t => !t._deleted && (!onlyTestId || t.id === onlyTestId)).forEach(t => {
+    const errs = validateTest(t).slice();
+    if (dupTestIds.has(t.id)) errs.push('такой тест для этой должности уже есть');
+    errs.forEach(e => problems.push(`Тест «${t.name || t.id}»: ${e}`));
+  });
+  working.filter(q => !q._deleted && (!onlyTestId || q.test_id === onlyTestId)).forEach(q => {
+    const errs = validateRow(q);
+    if (errs.length) {
+      const tn = (workingTests.find(t => t.id === q.test_id) || {}).name || q.test_id;
+      const snippet = (q.text || '').trim().slice(0, 40) || q.id;
+      problems.push(`Вопрос «${snippet}» (${tn}): ${errs.join(', ')}`);
+    }
+  });
+  return problems;
+}
+
+let publishing = false;        // идёт отправка — блокируем повторные клики
+let publishUiTimer = null;
+
+// перерисовка состояния кнопок сохранения — отложенная (setTimeout 0), чтобы пачка вызовов из циклов
+// рендера (по одному на вопрос) схлопывалась в один пересчёт diff'а
+function updatePublishState() {
+  if (publishUiTimer) return;
+  publishUiTimer = setTimeout(() => { publishUiTimer = null; refreshPublishUi(); }, 0);
+}
+
+// счётчик несохранённых правок на верхней кнопке/бейдже и на кнопках «Сохранить» каждого теста.
+// кнопка неактивна ТОЛЬКО когда сохранять нечего — ошибки валидации её больше не блокируют, а объясняются при клике
+function refreshPublishUi() {
+  const diff = computeDiff();
+  const total = diff.tests.length + diff.questions.length;
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = publishing || total === 0;
+  btn.textContent = total ? `Опубликовать изменения (${total})` : 'Опубликовать изменения';
+  btn.classList.toggle('dirty', total > 0);
+  document.getElementById('dirtyBadge').textContent = total ? `● Не сохранено: ${total}` : '';
+  document.querySelectorAll('[data-save-test]').forEach(b => {
+    const d = computeDiff(b.dataset.saveTest);
+    const n = d.tests.length + d.questions.length;
+    b.disabled = publishing || n === 0;
+    b.textContent = n ? `Сохранить (${n})` : 'Сохранено';
+    b.classList.toggle('dirty', n > 0);
+  });
 }
 
 // вырезает служебные _isNew/_deleted/т.п. поля перед отправкой на сервер
@@ -1145,9 +1213,9 @@ function isEqual(a, b) {
 }
 
 // сравнивает working с original и собирает {tests, questions} diff для публикации
-function computeDiff() {
+function computeDiff(onlyTestId) {
   const testOps = [];
-  workingTests.forEach(t => {
+  workingTests.filter(t => !onlyTestId || t.id === onlyTestId).forEach(t => {
     const plain = plainTest(t);
     if (t._isNew) {
       if (!t._deleted) testOps.push({ op: 'add', test: plain });
@@ -1164,7 +1232,7 @@ function computeDiff() {
   });
 
   const questionOps = [];
-  working.forEach(q => {
+  working.filter(q => !onlyTestId || q.test_id === onlyTestId).forEach(q => {
     const plain = plainQuestion(q);
     if (q._isNew) {
       if (!q._deleted) questionOps.push({ op: 'add', question: plain });
@@ -1184,18 +1252,127 @@ function computeDiff() {
   return { tests: testOps, questions: questionOps };
 }
 
-// отправляет diff на бэкенд синхронно — никакого GitHub Actions, слава богу, спасибо что переехали
-async function publish() {
-  const diff = computeDiff();
+// общий тостер для результатов сохранения/ошибок (контейнер тот же, что и у загрузки картинок — fixed,
+// вне карточек). клик закрывает раньше времени
+function showToast(text, kind, ms) {
+  const container = document.getElementById('uploadToasts');
+  const toast = mkEl('div', { class: 'upload-toast ' + (kind || '') });
+  const row = mkEl('div', { class: 'upload-toast-row' });
+  const icon = mkEl('span', { class: 'upload-toast-icon ' + (kind || '') });
+  icon.innerHTML = kind === 'error' ? ICON_X : ICON_CHECK;
+  const name = mkEl('span', { class: 'upload-toast-name wrap' });
+  name.textContent = text;
+  row.appendChild(icon);
+  row.appendChild(name);
+  toast.appendChild(row);
+  toast.style.cursor = 'pointer';
+  toast.onclick = () => toast.remove();
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), ms || 4000);
+}
+
+// JSON.stringify с отсортированными ключами — чтобы сравнение «снимок vs сервер» не зависело от порядка полей
+function stableStr(v) {
+  if (Array.isArray(v)) return '[' + v.map(stableStr).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableStr(v[k])).join(',') + '}';
+  return JSON.stringify(v);
+}
+
+// страница могла долго стоять открытой, пока кто-то ещё (или вы сами в другой вкладке) правил те же записи —
+// тогда наш diff, посчитанный от старого снимка, молча затёр бы чужие правки. Сверяем сервер со снимком, с которого
+// начинали, ТОЛЬКО по тем записям, которые собираемся менять/удалять. null — проверить не удалось (не блокируем)
+async function findConflicts(diff) {
+  let srvTests, srvQs;
+  try {
+    const [tRes, qRes] = await Promise.all([
+      fetch(QUIZ_DATA_TESTS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN }, cache: 'no-store' }),
+      fetch(QUIZ_DATA_QUESTIONS_URL, { headers: { 'X-Quiz-Token': QUIZ_TOKEN }, cache: 'no-store' }),
+    ]);
+    if (!tRes.ok || !qRes.ok) return null;
+    srvTests = new Map((await tRes.json()).map(t => [t.id, t]));
+    srvQs = new Map((await qRes.json()).map(q => [q.id, q]));
+  } catch (e) {
+    return null;
+  }
+  const conflicts = [];
+  diff.tests.forEach(op => {
+    if (op.op === 'add') return;
+    const snap = originalTestsById.get(op.id);
+    const srv = srvTests.get(op.id);
+    if (!srv) conflicts.push(`тест «${snap ? snap.name : op.id}» уже удалён на сервере`);
+    else if (snap && stableStr(plainTest(srv)) !== stableStr(plainTest(snap))) conflicts.push(`тест «${srv.name}» изменён с другого места`);
+  });
+  diff.questions.forEach(op => {
+    if (op.op === 'add') return;
+    const snap = originalById.get(op.id);
+    const srv = srvQs.get(op.id);
+    const label = (snap && snap.text || op.id).trim().slice(0, 40);
+    if (!srv) conflicts.push(`вопрос «${label}» уже удалён на сервере`);
+    else if (snap && stableStr(plainQuestion(srv)) !== stableStr(plainQuestion(snap))) conflicts.push(`вопрос «${label}» изменён с другого места`);
+  });
+  return conflicts;
+}
+
+// после сохранения ОДНОГО теста не перезагружаем весь банк (это стёрло бы несохранённые правки в других тестах) —
+// просто обновляем «снимок» и флаги только у того, что реально ушло на сервер
+function applyPublishedLocally(diff) {
+  diff.tests.forEach(op => {
+    if (op.op === 'delete') {
+      workingTests = workingTests.filter(t => t.id !== op.id);
+      originalTestsById.delete(op.id);
+    } else {
+      const id = op.op === 'add' ? op.test.id : op.id;
+      const wt = workingTests.find(t => t.id === id);
+      if (wt) wt._isNew = false;
+      originalTestsById.set(id, JSON.parse(JSON.stringify(op.test)));
+    }
+  });
+  diff.questions.forEach(op => {
+    if (op.op === 'delete') {
+      working = working.filter(q => q.id !== op.id);
+      originalById.delete(op.id);
+    } else {
+      const id = op.op === 'add' ? op.question.id : op.id;
+      const wq = working.find(q => q.id === id);
+      if (wq) wq._isNew = false;
+      originalById.set(id, JSON.parse(JSON.stringify(op.question)));
+    }
+  });
+}
+
+// отправляет diff на бэкенд синхронно — никакого GitHub Actions, слава богу, спасибо что переехали.
+// testId = null — публикуем всё, иначе только правки этого теста (+ его вопросов), остальное остаётся как есть
+async function publishScoped(testId) {
+  if (publishing) return;
+
+  const problems = collectProblems(testId);
+  if (problems.length) {
+    const shown = problems.slice(0, 6).join('\n') + (problems.length > 6 ? `\n…и ещё ${problems.length - 6}` : '');
+    showToast('Не сохранено — исправьте:\n' + shown, 'error', 12000);
+    setStatus('mainStatus', `Не сохранено: ошибок ${problems.length}`, 'error');
+    return;
+  }
+
+  const diff = computeDiff(testId);
   const total = diff.tests.length + diff.questions.length;
   if (total === 0) {
+    showToast('Изменений нет — сохранять нечего', 'ok', 2500);
     setStatus('mainStatus', 'Изменений нет — публиковать нечего', 'ok');
     return;
   }
 
+  publishing = true;
+  refreshPublishUi();
   setStatus('mainStatus', `Публикую ${total} изменени(я/й)…`);
-  document.getElementById('publishBtn').disabled = true;
   try {
+    const conflicts = await findConflicts(diff);
+    if (conflicts && conflicts.length) {
+      const shown = conflicts.slice(0, 5).join('\n') + (conflicts.length > 5 ? `\n…и ещё ${conflicts.length - 5}` : '');
+      showToast('Не сохранено — на сервере это уже изменили после загрузки страницы:\n' + shown + '\nОбновите страницу (несохранённое на ней пропадёт — перенесите нужное руками)', 'error', 20000);
+      setStatus('mainStatus', 'Не сохранено: данные на сервере изменились', 'error');
+      return;
+    }
+
     const res = await fetch(QUIZ_DATA_PUBLISH_URL, {
       method: 'POST',
       headers: {
@@ -1206,23 +1383,40 @@ async function publish() {
     });
     if (res.ok) {
       const body = await res.json().catch(() => ({}));
+      if (testId) { applyPublishedLocally(diff); render(); } else { await loadBank(); }
+      showToast(`Сохранено: ${total} изменени(я/й)`, 'ok', 3000);
       setStatus('mainStatus', `Опубликовано: тестов ${body.tests_count ?? '?'}, вопросов ${body.questions_count ?? '?'}`, 'ok');
-      await loadBank();
-      return;
     } else if (res.status === 401) {
+      showToast('Не сохранено: токен редактора недействителен', 'error', 10000);
       setStatus('mainStatus', 'Токен редактора недействителен', 'error');
     } else if (res.status === 429) {
+      showToast('Не сохранено: слишком много запросов подряд — подождите минуту и нажмите ещё раз', 'error', 10000);
       setStatus('mainStatus', 'Слишком много запросов подряд — подождите немного и повторите', 'error');
     } else {
       const err = await res.json().catch(() => ({}));
+      showToast(`Не сохранено: ${err.error || 'ошибка ' + res.status}`, 'error', 12000);
       setStatus('mainStatus', `Ошибка публикации: ${err.error || res.status}`, 'error');
     }
   } catch (e) {
+    showToast('Не сохранено: ошибка сети — ' + e.message, 'error', 10000);
     setStatus('mainStatus', 'Ошибка сети: ' + e.message, 'error');
   } finally {
-    updatePublishState();
+    publishing = false;
+    refreshPublishUi();
   }
 }
+
+// верхняя кнопка — всё сразу
+function publish() { return publishScoped(null); }
+// кнопка «Сохранить» на карточке теста / в шапке открытого теста — только этот тест и его вопросы
+function publishTest(testId) { return publishScoped(testId); }
+
+// ушли со страницы с несохранёнными правками — браузер переспросит
+window.addEventListener('beforeunload', (e) => {
+  if (document.getElementById('editorScreen').style.display !== 'flex') return;
+  const d = computeDiff();
+  if (d.tests.length + d.questions.length > 0) { e.preventDefault(); e.returnValue = ''; }
+});
 </script>
 </body>
 </html>
